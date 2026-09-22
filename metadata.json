@@ -1,0 +1,6 @@
+{
+  "name": "Kicks Luxe - B2B & Retail Sneaker Vault",
+  "description": "Plataforma de alta estirpe para revenda e atacado de sneakers de luxo, catálogo com zoom cinemático, pedidos em lote e Agente Extrator IA de PDFs e Imagens com suporte a Gemini e DeepSeek.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
