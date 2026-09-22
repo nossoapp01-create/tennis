@@ -88,5 +88,6 @@ export interface ExtractedSneakerCandidate {
   targetStore: string;
   sourcePage?: number;
   isApproved: boolean;
+  isSelected?: boolean;
   isEnriching?: boolean;
 }

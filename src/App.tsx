@@ -345,6 +345,14 @@ export default function App() {
     setProducts((prev) => prev.filter((p) => p.id !== productId));
   };
 
+  const handleBulkUpdateProducts = (updatedProducts: SneakerProduct[]) => {
+    if (!updatedProducts || updatedProducts.length === 0) return;
+    setProducts((prev) => {
+      const updateMap = new Map(updatedProducts.map((p) => [p.id, p]));
+      return prev.map((p) => updateMap.get(p.id) || p);
+    });
+  };
+
   // Total cart items count
   const cartPairsCount = cart.reduce((acc, item) => {
     return acc + item.sizeQuantities.reduce((sAcc, sq) => sAcc + sq.quantity, 0);
@@ -621,6 +629,7 @@ export default function App() {
         onPublishToCatalog={handlePublishExtractedCandidates}
         onAddProduct={handleAddManualProduct}
         onDeleteProduct={handleDeleteProduct}
+        onBulkUpdateProducts={handleBulkUpdateProducts}
         aiStatus={aiStatus}
         onRefreshAIStatus={checkAIStatus}
       />

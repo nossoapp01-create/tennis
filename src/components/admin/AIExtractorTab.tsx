@@ -16,7 +16,13 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
-  Check
+  Check,
+  Tag,
+  SlidersHorizontal,
+  CheckSquare,
+  Square,
+  Percent,
+  Coins
 } from 'lucide-react';
 import { ExtractedSneakerCandidate, SneakerProduct, PartnerStore, AIConfigSettings, AIModelStatus } from '../../types';
 
@@ -130,6 +136,151 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
   const [candidates, setCandidates] = useState<ExtractedSneakerCandidate[]>([]);
   const [editingCandidateId, setEditingCandidateId] = useState<string | null>(null);
   const [publishToast, setPublishToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Bulk pricing states for mass updates (Todos vs Selecionados)
+  const [bulkPricingTarget, setBulkPricingTarget] = useState<'selected' | 'all'>('selected');
+  const [bulkWholesalePrice, setBulkWholesalePrice] = useState<string>('10');
+  const [bulkRetailPrice, setBulkRetailPrice] = useState<string>('25');
+  const [isAutoRetail, setIsAutoRetail] = useState<boolean>(true);
+  const [autoMarkupPercent, setAutoMarkupPercent] = useState<number>(150);
+
+  // Apply quick preset to bulk inputs
+  const handleSelectPreset = (wholesale: number, retail?: number) => {
+    setBulkWholesalePrice(wholesale.toString());
+    if (retail !== undefined) {
+      setBulkRetailPrice(retail.toString());
+      setIsAutoRetail(false);
+    } else {
+      const calculatedRetail = Math.max(Math.round(wholesale * (1 + autoMarkupPercent / 100)), wholesale + 2);
+      setBulkRetailPrice(calculatedRetail.toString());
+    }
+  };
+
+  // Direct 1-click apply of a specific wholesale value (e.g. "10 €" or "1 €")
+  const handleQuickApplyValue = (value: number) => {
+    const wholesaleVal = value;
+    const retailVal = isAutoRetail
+      ? Math.max(Math.round(wholesaleVal * (1 + autoMarkupPercent / 100)), wholesaleVal + 2)
+      : parseFloat(bulkRetailPrice) || Math.round(wholesaleVal * 2);
+
+    setBulkWholesalePrice(wholesaleVal.toString());
+    setBulkRetailPrice(retailVal.toString());
+
+    let count = 0;
+    setCandidates((prev) =>
+      prev.map((c) => {
+        const isTarget = bulkPricingTarget === 'all' || c.isSelected !== false;
+        if (!isTarget) return c;
+        count++;
+        return {
+          ...c,
+          suggestedWholesalePrice: wholesaleVal,
+          suggestedRetailPrice: retailVal,
+          isApproved: true,
+        };
+      })
+    );
+
+    const targetDesc = bulkPricingTarget === 'all' ? `todos os ${candidates.length} modelos` : `${count} modelos selecionados`;
+    setPublishToast({
+      message: `Preço de Atacado definido como € ${wholesaleVal.toFixed(2)} (Varejo: € ${retailVal.toFixed(2)}) para ${targetDesc}!`,
+      type: 'success',
+    });
+    setTimeout(() => setPublishToast(null), 5000);
+  };
+
+  // Generic apply from input fields
+  const handleApplyBulkPricing = () => {
+    const wholesaleVal = parseFloat(bulkWholesalePrice.replace(',', '.'));
+    const retailVal = parseFloat(bulkRetailPrice.replace(',', '.'));
+
+    const hasValidWholesale = !isNaN(wholesaleVal) && wholesaleVal > 0;
+    const hasValidRetail = !isNaN(retailVal) && retailVal > 0;
+
+    if (!hasValidWholesale && !hasValidRetail) {
+      setPublishToast({
+        message: 'Por favor, informe um valor numérico válido para o Preço de Atacado ou Varejo (ex: 10 ou 1).',
+        type: 'error',
+      });
+      setTimeout(() => setPublishToast(null), 4000);
+      return;
+    }
+
+    let affectedCount = 0;
+
+    setCandidates((prev) =>
+      prev.map((c) => {
+        const isTarget = bulkPricingTarget === 'all' || c.isSelected !== false;
+        if (!isTarget) return c;
+
+        affectedCount++;
+        let newWholesale = c.suggestedWholesalePrice;
+        let newRetail = c.suggestedRetailPrice;
+
+        if (hasValidWholesale) {
+          newWholesale = wholesaleVal;
+        }
+
+        if (hasValidRetail) {
+          newRetail = retailVal;
+        } else if (hasValidWholesale && isAutoRetail) {
+          newRetail = Math.max(
+            Math.round(newWholesale * (1 + autoMarkupPercent / 100)),
+            newWholesale + 2
+          );
+        }
+
+        return {
+          ...c,
+          suggestedWholesalePrice: newWholesale,
+          suggestedRetailPrice: newRetail,
+          isApproved: true,
+        };
+      })
+    );
+
+    if (affectedCount === 0) {
+      setPublishToast({
+        message: 'Nenhum modelo foi afetado. Marque os modelos desejados ou selecione "Todos os Modelos".',
+        type: 'info',
+      });
+      setTimeout(() => setPublishToast(null), 4500);
+      return;
+    }
+
+    const targetDesc = bulkPricingTarget === 'all' ? `todos os ${candidates.length} modelos` : `${affectedCount} modelos selecionados`;
+    const finalRetail = hasValidRetail
+      ? retailVal
+      : hasValidWholesale && isAutoRetail
+      ? Math.max(Math.round(wholesaleVal * (1 + autoMarkupPercent / 100)), wholesaleVal + 2)
+      : null;
+
+    setPublishToast({
+      message: `Precificação aplicada a ${targetDesc}: Atacado: € ${hasValidWholesale ? wholesaleVal.toFixed(2) : '-'} | Varejo: € ${finalRetail !== null ? finalRetail.toFixed(2) : '-'}!`,
+      type: 'success',
+    });
+    setTimeout(() => setPublishToast(null), 5000);
+  };
+
+  // Selection toggle helpers
+  const handleSelectAllCandidates = (selected: boolean) => {
+    setCandidates((prev) => prev.map((c) => ({ ...c, isSelected: selected })));
+  };
+
+  const handleInvertCandidatesSelection = () => {
+    setCandidates((prev) => prev.map((c) => ({ ...c, isSelected: c.isSelected === false })));
+  };
+
+  const handleApproveAllSelected = () => {
+    setCandidates((prev) =>
+      prev.map((c) => (c.isSelected !== false ? { ...c, isApproved: true } : c))
+    );
+    setPublishToast({
+      message: 'Todos os modelos selecionados foram marcados como APROVADOS!',
+      type: 'success',
+    });
+    setTimeout(() => setPublishToast(null), 4000);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -377,6 +528,7 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
               targetStore: config.defaultTargetStore || 'central',
               sourcePage: item.pageNum,
               isApproved: true,
+              isSelected: true,
             });
           }
         }
@@ -878,21 +1030,243 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
             </button>
           </div>
 
+          {/* BULK PRICING TOOLBAR (Precificar Todos ou Selecionados) */}
+          <div className="bg-gradient-to-br from-[#242226] via-[#1c1b1e] to-[#161517] border border-amber-400/30 rounded-2xl p-4 md:p-5 shadow-2xl space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-400 flex items-center justify-center shadow-inner">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h5 className="font-syne font-bold text-sm text-white">
+                      Precificação Rápida em Lote
+                    </h5>
+                    <span className="text-[10px] font-mono-sku px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/30 font-bold">
+                      TODOS OU SELECIONADOS
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 font-jakarta mt-0.5">
+                    Defina o preço de atacado e varejo para todos os pares ou apenas para os modelos marcados (ex: colocar 10 € ou 1 €).
+                  </p>
+                </div>
+              </div>
+
+              {/* Selection Status Badge */}
+              <div className="flex items-center gap-2 text-xs font-mono-sku">
+                <span className="px-3 py-1 rounded-lg bg-black/50 border border-white/10 text-zinc-300">
+                  <strong className="text-amber-400">{candidates.filter((c) => c.isSelected !== false).length}</strong> de {candidates.length} selecionados
+                </span>
+                <span className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                  <strong className="text-emerald-400">{candidates.filter((c) => c.isApproved).length}</strong> aprovados
+                </span>
+              </div>
+            </div>
+
+            {/* Target Selector & Pricing Inputs */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+              {/* Target Scope Switcher */}
+              <div className="lg:col-span-4 space-y-1.5">
+                <label className="text-[11px] font-mono-sku text-zinc-400 block uppercase">
+                  Aplicar Preço Em:
+                </label>
+                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setBulkPricingTarget('selected')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-syne font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      bulkPricingTarget === 'selected'
+                        ? 'bg-amber-400 text-black shadow-md'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>Selecionados ({candidates.filter((c) => c.isSelected !== false).length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBulkPricingTarget('all')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-syne font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      bulkPricingTarget === 'all'
+                        ? 'bg-amber-400 text-black shadow-md'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Todos ({candidates.length})</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Wholesale and Retail Inputs */}
+              <div className="lg:col-span-5 grid grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-mono-sku text-amber-300 font-bold block">
+                      Atacado 10+ (€):
+                    </label>
+                    <span className="text-[9px] font-mono-sku text-zinc-500">EX: 10 ou 1</span>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-amber-400 font-bold">
+                      €
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={bulkWholesalePrice}
+                      onChange={(e) => setBulkWholesalePrice(e.target.value)}
+                      placeholder="10"
+                      className="w-full bg-black/60 border border-amber-400/40 focus:border-amber-400 rounded-xl pl-7 pr-3 py-2 text-white font-mono-sku text-sm font-bold focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-mono-sku text-zinc-300 block">
+                      Varejo (€):
+                    </label>
+                    <label className="flex items-center gap-1 text-[9px] font-mono-sku text-zinc-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isAutoRetail}
+                        onChange={(e) => setIsAutoRetail(e.target.checked)}
+                        className="w-3 h-3 accent-amber-400 rounded"
+                      />
+                      <span>Auto (+150%)</span>
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-zinc-400 font-bold">
+                      €
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={isAutoRetail ? (parseFloat(bulkWholesalePrice) ? Math.max(Math.round(parseFloat(bulkWholesalePrice) * (1 + autoMarkupPercent / 100)), parseFloat(bulkWholesalePrice) + 2) : 25) : bulkRetailPrice}
+                      disabled={isAutoRetail}
+                      onChange={(e) => setBulkRetailPrice(e.target.value)}
+                      placeholder="25"
+                      className={`w-full bg-black/60 border rounded-xl pl-7 pr-3 py-2 text-white font-mono-sku text-sm font-bold focus:outline-none ${
+                        isAutoRetail ? 'border-white/10 text-zinc-400 cursor-not-allowed opacity-80' : 'border-white/20 focus:border-white/40'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Apply Button */}
+              <div className="lg:col-span-3 flex flex-col justify-end">
+                <button
+                  type="button"
+                  onClick={handleApplyBulkPricing}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition-all transform active:scale-95"
+                >
+                  <Zap className="w-4 h-4 fill-black" />
+                  <span>
+                    Aplicar {bulkWholesalePrice ? `€ ${bulkWholesalePrice}` : ''} aos {bulkPricingTarget === 'all' ? 'Todos' : 'Selecionados'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick 1-Click Presets & Selection Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5">
+              {/* 1-Click Presets */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-mono-sku text-zinc-400 flex items-center gap-1">
+                  <Coins className="w-3.5 h-3.5 text-amber-400" />
+                  Atalhos de 1-Clique:
+                </span>
+                {[1, 5, 10, 15, 20, 25, 35, 50, 75, 100].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => handleQuickApplyValue(val)}
+                    title={`Definir atacado imediatamente como € ${val} aos ${bulkPricingTarget === 'all' ? 'todos' : 'selecionados'}`}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-sku font-bold transition-all border ${
+                      parseFloat(bulkWholesalePrice) === val
+                        ? 'bg-amber-400 text-black border-amber-400 shadow-sm'
+                        : 'bg-black/40 text-zinc-300 border-white/10 hover:border-amber-400/50 hover:text-amber-300'
+                    }`}
+                  >
+                    € {val}
+                  </button>
+                ))}
+              </div>
+
+              {/* Selection Helpers */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSelectAllCandidates(true)}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-mono-sku text-zinc-300 hover:text-white transition-colors"
+                >
+                  Marcar Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectAllCandidates(false)}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-mono-sku text-zinc-400 hover:text-white transition-colors"
+                >
+                  Desmarcar Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInvertCandidatesSelection}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-mono-sku text-zinc-400 hover:text-white transition-colors"
+                >
+                  Inverter
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApproveAllSelected}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-[10px] font-mono-sku text-emerald-300 hover:text-emerald-200 transition-colors font-bold"
+                >
+                  ✓ Aprovar Selecionados
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Candidates Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {candidates.map((cand) => (
               <div
                 key={cand.id}
-                className={`bg-[#201f21] border rounded-2xl p-4 flex flex-col justify-between transition-all ${
-                  cand.isApproved ? 'border-amber-400/40' : 'border-white/10 opacity-70'
+                className={`border rounded-2xl p-4 flex flex-col justify-between transition-all ${
+                  cand.isSelected !== false
+                    ? 'border-amber-400/60 ring-1 ring-amber-400/30 bg-[#222023] shadow-lg shadow-amber-500/5'
+                    : cand.isApproved
+                    ? 'border-white/20 bg-[#201f21]'
+                    : 'border-white/10 bg-[#201f21] opacity-70'
                 }`}
               >
                 <div>
-                  {/* Top Bar */}
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono-sku text-[10px] font-bold px-2 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300">
-                      REF: #{cand.sku}
-                    </span>
+                  {/* Top Bar with Selection Checkbox and Approval Toggle */}
+                  <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+                    <label className="flex items-center gap-2 cursor-pointer select-none group">
+                      <input
+                        type="checkbox"
+                        checked={cand.isSelected !== false}
+                        onChange={() =>
+                          setCandidates((prev) =>
+                            prev.map((c) =>
+                              c.id === cand.id ? { ...c, isSelected: c.isSelected === false ? true : false } : c
+                            )
+                          )
+                        }
+                        className="w-4 h-4 rounded bg-black/60 border-white/20 text-amber-400 focus:ring-amber-400 accent-amber-400 cursor-pointer"
+                      />
+                      <span className="font-mono-sku text-[10px] font-bold px-2 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300">
+                        REF: #{cand.sku}
+                      </span>
+                    </label>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -900,13 +1274,13 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
                           prev.map((c) => (c.id === cand.id ? { ...c, isApproved: !c.isApproved } : c))
                         )
                       }
-                      className={`text-[10px] font-mono-sku px-2 py-0.5 rounded-full border ${
+                      className={`text-[10px] font-mono-sku px-2.5 py-0.5 rounded-full border transition-colors ${
                         cand.isApproved
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold'
                           : 'bg-zinc-800 text-zinc-400 border-white/10'
                       }`}
                     >
-                      {cand.isApproved ? 'APROVADO' : 'IGNORAR'}
+                      {cand.isApproved ? '✓ APROVADO' : 'IGNORAR'}
                     </button>
                   </div>
 
@@ -1002,6 +1376,16 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
                           className="w-full bg-black/40 border border-amber-400/40 rounded-lg p-1.5 text-amber-300 font-mono-sku text-xs"
                         />
                       </div>
+                    </div>
+
+                    {/* Live Margin Calculation */}
+                    <div className="flex items-center justify-between px-2 py-1 bg-black/40 rounded-lg border border-white/5 text-[10px] font-mono-sku">
+                      <span className="text-zinc-400">Margem Comercial B2B:</span>
+                      <span className="text-emerald-400 font-bold">
+                        +{cand.suggestedWholesalePrice > 0
+                          ? Math.round(((cand.suggestedRetailPrice - cand.suggestedWholesalePrice) / cand.suggestedWholesalePrice) * 100)
+                          : 100}%
+                      </span>
                     </div>
 
                     {/* Target Store Selector */}
