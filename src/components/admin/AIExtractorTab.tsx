@@ -54,6 +54,34 @@ const areHashesDuplicate = (hash1: string, hash2: string, threshold = 0.94): boo
   return matches / hash1.length >= threshold;
 };
 
+// Downscale and compress canvas image to ~30-45KB to prevent browser memory & storage quota issues
+const compressImageCanvas = (canvas: HTMLCanvasElement, maxDimension = 640, quality = 0.72): string => {
+  try {
+    const width = canvas.width;
+    const height = canvas.height;
+    const maxSide = Math.max(width, height);
+    if (maxSide <= maxDimension) {
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+    const ratio = maxDimension / maxSide;
+    const targetW = Math.round(width * ratio);
+    const targetH = Math.round(height * ratio);
+    const downscaledCanvas = document.createElement('canvas');
+    downscaledCanvas.width = targetW;
+    downscaledCanvas.height = targetH;
+    const ctx = downscaledCanvas.getContext('2d');
+    if (ctx) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(canvas, 0, 0, targetW, targetH);
+      return downscaledCanvas.toDataURL('image/jpeg', quality);
+    }
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch {
+    return canvas.toDataURL('image/jpeg', 0.65);
+  }
+};
+
 interface AIExtractorTabProps {
   onPublishToCatalog: (candidates: SneakerProduct[]) => void;
   partnerStores: PartnerStore[];
@@ -101,6 +129,7 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
   // Candidates awaiting review
   const [candidates, setCandidates] = useState<ExtractedSneakerCandidate[]>([]);
   const [editingCandidateId, setEditingCandidateId] = useState<string | null>(null);
+  const [publishToast, setPublishToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -233,7 +262,7 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
             duplicateCounter++;
           } else {
             if (fingerprint) seenFingerprints.push(fingerprint);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            const dataUrl = compressImageCanvas(canvas, 640, 0.72);
             pagesArray.push({ pageNum: p, dataUrl, selected: true, fingerprint });
           }
         }
@@ -338,8 +367,8 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
               brand: p.brand || 'Original',
               category: p.category || 'Retro Runner',
               sku: p.sku || `KL-${Math.floor(1000 + Math.random() * 9000)}`,
-              suggestedRetailPrice: p.suggestedRetailPrice || 890,
-              suggestedWholesalePrice: p.suggestedWholesalePrice || 390,
+              suggestedRetailPrice: p.suggestedRetailPrice || 140,
+              suggestedWholesalePrice: p.suggestedWholesalePrice || 55,
               image: base64,
               description: p.description || 'Modelo de alta performance e acabamento artesanal.',
               materials: p.materials || ['Couro Legítimo', 'Borracha Vulcanizada'],
@@ -417,48 +446,113 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
   const handleCommitCandidates = () => {
     const approved = candidates.filter((c) => c.isApproved);
     if (approved.length === 0) {
-      alert('Nenhum modelo aprovado para publicação.');
+      setPublishToast({
+        message: 'Nenhum modelo aprovado para publicação. Marque os modelos desejados como APROVADO antes de salvar.',
+        type: 'error',
+      });
+      setTimeout(() => setPublishToast(null), 4000);
       return;
     }
 
-    const products: SneakerProduct[] = approved.map((c) => ({
-      id: `prod-ext-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      name: c.name,
-      sku: c.sku,
-      brand: c.brand,
-      category: c.category,
-      retailPrice: c.suggestedRetailPrice,
-      wholesalePrice: c.suggestedWholesalePrice,
-      minWholesaleQty: 10,
-      profitMarginPct: Math.round(
-        ((c.suggestedRetailPrice - c.suggestedWholesalePrice) / c.suggestedWholesalePrice) * 100
-      ),
-      badge: 'NOVA GRADE IA',
-      image: c.image,
-      description: c.description,
-      materials: c.materials,
-      specs: {
-        upper: `${c.materials?.join(', ')} com corte a laser`,
-        midsole: 'Entressola ergonômica com densidade balanceada',
-        cushioning: c.cushioningTech,
-        authenticityProof: `Conferência 1:1 por IA com identificador #${c.sku}`,
-        preservationMode: 'Armazenar em local arejado longe de umidade',
-      },
-      sizes: c.sizes,
-      stockPerSize: { 38: 10, 39: 15, 40: 20, 41: 25, 42: 20, 43: 15, 44: 10 },
-      storeId: c.targetStore,
-      originSource: 'pdf_extracted',
-      createdAt: new Date().toISOString(),
-    }));
+    const parseEuroPrice = (val: any, fallback: number): number => {
+      if (typeof val === 'number' && !isNaN(val) && val > 0) return val;
+      if (typeof val === 'string') {
+        const cleaned = val.replace(/[^0-9.,]/g, '').replace(',', '.');
+        const num = parseFloat(cleaned);
+        if (!isNaN(num) && num > 0) return num;
+      }
+      return fallback;
+    };
 
+    const products: SneakerProduct[] = approved.map((c, index) => {
+      const retail = parseEuroPrice(c.suggestedRetailPrice, 140);
+      const wholesale = parseEuroPrice(c.suggestedWholesalePrice, 55);
+      const margin = wholesale > 0 ? Math.round(((retail - wholesale) / wholesale) * 100) : 120;
+
+      return {
+        id: `prod-ext-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
+        name: c.name || `Sneaker Modelo #${index + 1}`,
+        sku: c.sku || `KL-${Math.floor(1000 + Math.random() * 9000)}`,
+        brand: c.brand || 'Original',
+        category: c.category || 'Retro Runner',
+        retailPrice: retail,
+        wholesalePrice: wholesale,
+        minWholesaleQty: 10,
+        profitMarginPct: margin,
+        badge: 'NOVA GRADE IA',
+        image: c.image,
+        description: c.description || 'Modelo autêntico de alta rotação catalogado via IA.',
+        materials: c.materials && c.materials.length > 0 ? c.materials : ['Couro Legítimo', 'Borracha Vulcanizada'],
+        specs: {
+          upper: `${c.materials?.join(', ') || 'Couro'} com acabamento premium`,
+          midsole: 'Entressola anatômica balanceada',
+          cushioning: c.cushioningTech || 'Amortecimento de alta resposta',
+          authenticityProof: `Conferência 1:1 por IA com identificador #${c.sku}`,
+          preservationMode: 'Armazenar em local arejado longe de umidade',
+        },
+        sizes: Array.isArray(c.sizes) && c.sizes.length > 0 ? c.sizes : [38, 39, 40, 41, 42, 43, 44],
+        stockPerSize: { 38: 10, 39: 15, 40: 20, 41: 25, 42: 20, 43: 15, 44: 10 },
+        storeId: c.targetStore || 'central',
+        originSource: 'pdf_extracted',
+        createdAt: new Date().toISOString(),
+      };
+    });
+
+    // Publish to catalog
     onPublishToCatalog(products);
-    // Remove approved candidates
+
+    // Remove approved candidates from pending queue
     setCandidates((prev) => prev.filter((c) => !c.isApproved));
-    alert(`${products.length} modelos aprovados e publicados com sucesso no catálogo oficial da KicksLuxe!`);
+
+    setPublishToast({
+      message: `${products.length} modelos aprovados e publicados com sucesso no catálogo oficial da KicksLuxe em Euros (€)!`,
+      type: 'success',
+    });
+    setTimeout(() => setPublishToast(null), 5000);
   };
 
   return (
     <div className="space-y-6">
+      {/* Dynamic Action & Publish Toast */}
+      {publishToast && (
+        <div
+          className={`p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-xl transition-all ${
+            publishToast.type === 'success'
+              ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200'
+              : publishToast.type === 'error'
+              ? 'bg-red-950/80 border-red-500/50 text-red-200'
+              : 'bg-zinc-900 border-white/20 text-zinc-200'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                publishToast.type === 'success'
+                  ? 'bg-emerald-500 text-black'
+                  : publishToast.type === 'error'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-amber-400 text-black'
+              }`}
+            >
+              {publishToast.type === 'success' ? '✓' : '!'}
+            </div>
+            <div>
+              <p className="font-syne font-bold text-sm text-white">{publishToast.message}</p>
+              <p className="text-xs opacity-80 font-jakarta">
+                Os dados foram gravados de forma segura e sincronizados com o estoque oficial.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPublishToast(null)}
+            className="px-3 py-1 text-xs rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono-sku transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
       {/* Top AI Status and Model Selector Bar */}
       <div className="bg-[#1c1b1c] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -879,7 +973,7 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-mono-sku text-zinc-400 block">Preço Varejo (R$):</label>
+                        <label className="text-[10px] font-mono-sku text-zinc-400 block">Preço Varejo (€):</label>
                         <input
                           type="number"
                           value={cand.suggestedRetailPrice}
@@ -894,7 +988,7 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-mono-sku text-amber-400 block">Atacado 10+ (R$):</label>
+                        <label className="text-[10px] font-mono-sku text-amber-400 block">Atacado 10+ (€):</label>
                         <input
                           type="number"
                           value={cand.suggestedWholesalePrice}

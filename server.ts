@@ -147,23 +147,23 @@ Você DEVE identificar com precisão:
 1. "name": Nome comercial do tênis (ex: "Air Jordan 4 Retro University Blue", "Adidas Campus 00s Lush Green", "Balenciaga 3XL Distressed", "Nike Shox TL Triple Black", etc.)
 2. "brand": Marca oficial (ex: "Nike", "Jordan", "Adidas", "New Balance", "Balenciaga", "Louis Vuitton", "Asics", "Salomon", "Bape", "Yeezy", "On")
 3. "category": Uma das categorias: "High-Top", "Low-Top", "Retro Runner", "Chunky Luxury", "Chuteiras / Futebol", "Slides / Mule", "Corrida & Performance", "Kids"
-4. "suggestedRetailPrice": Preço de venda no varejo em Reais (R$), valor numérico realista de mercado (ex: 890, 1190, 1490, 1890)
-5. "suggestedWholesalePrice": Preço sugerido de atacado (revenda 10+ pares), que ofereça entre 100% a 150% de margem para o lojista (geralmente entre 40% a 50% do valor de varejo, ex: se varejo for 900, atacado é 390).
+4. "suggestedRetailPrice": Preço de venda no varejo em EUROS (€), valor numérico realista de mercado europeu (ex: 120, 140, 160, 180, 220)
+5. "suggestedWholesalePrice": Preço sugerido de atacado em EUROS (€) para revenda B2B 10+ pares, garantindo entre 100% a 150% de margem de lucro para o lojista parceiro (geralmente entre 35€ a 75€ por par, ex: se varejo for 140€, atacado é 55€).
 6. "sku": Código de referência de estoque único (ex: "KL-" seguido de 4 dígitos ou sigla do modelo, ex: "KL-9060-GRY")
 7. "description": Descrição técnica refinada em português destacando estilo, silhueta, história do modelo, materiais e apelo de revenda.
 8. "materials": Lista com 3 a 5 materiais principais (ex: ["Couro Bovino 100%", "Camurça Nobre", "Entressola EVA com Cápsula de Ar", "Solado de Borracha Vulcanizada"])
 9. "cushioningTech": Tecnologia de amortecimento (ex: "Nike Air", "ZoomX", "ABZORB & SBS", "Lightstrike", "EVA Injetado", "Molas Shox")
 10. "authenticityProof": Detalhes de autenticidade (ex: "Costura perimétrica uniforme, código de lote na etiqueta interna, solado com gravação nítida")
 11. "preservationMode": Modo ideal de conservação e cuidado com o calçado
-12. "sizes": Lista de tamanhos brasileiros recomendados (ex: [38, 39, 40, 41, 42, 43, 44])
+12. "sizes": Lista de tamanhos europeus (EU) recomendados (ex: [38, 39, 40, 41, 42, 43, 44])
 
 Retorne APENAS um objeto JSON com esta estrutura (sem formatação markdown envolvente):
 {
   "name": "...",
   "brand": "...",
   "category": "...",
-  "suggestedRetailPrice": 950,
-  "suggestedWholesalePrice": 420,
+  "suggestedRetailPrice": 140,
+  "suggestedWholesalePrice": 55,
   "sku": "KL-...",
   "description": "...",
   "materials": ["..."],
@@ -273,7 +273,7 @@ Forneça informações precisas para cadastro de e-commerce e atacado de luxo:
 4. Tecnologia exata de amortecimento e conforto
 5. Pontos-chave de conferência de autenticidade (laudo 1:1)
 6. Modo de conservação e limpeza recomendado
-7. Preço de mercado atual em BRL (Varejo e Atacado B2B)
+7. Preço de mercado atual em Euros (€) (Varejo e Atacado B2B)
 8. Margem de lucro média projetada para revenda
 
 Retorne em formato JSON estrito:
@@ -287,9 +287,9 @@ Retorne em formato JSON estrito:
     "authenticityProof": "...",
     "preservationMode": "..."
   },
-  "suggestedRetailPrice": 950,
-  "suggestedWholesalePrice": 420,
-  "profitMarginPct": 126,
+  "suggestedRetailPrice": 145,
+  "suggestedWholesalePrice": 60,
+  "profitMarginPct": 141,
   "category": "${category || 'Retro Runner'}"
 }
 `;

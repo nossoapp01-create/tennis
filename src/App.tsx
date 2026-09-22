@@ -27,6 +27,14 @@ import { Footer } from './components/Footer';
 import { INITIAL_PRODUCTS } from './data/initialProducts';
 import { INITIAL_PARTNER_STORES } from './data/partnerStores';
 import { SneakerProduct, CartItem, SizeQuantity, PartnerStore, AIModelStatus } from './types';
+import {
+  saveProductsToStorage,
+  loadProductsFromStorage,
+  saveStoresToStorage,
+  loadStoresFromStorage,
+  saveCartToStorage,
+  loadCartFromStorage,
+} from './services/storage';
 
 export default function App() {
   // Mode: Varejo vs Atacado (10+ un)
@@ -58,14 +66,26 @@ export default function App() {
 
   // Cart / B2B Manifest state
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('kicksluxe_cart');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
-    }
-    return [];
+    return loadCartFromStorage();
   });
+
+  // Load larger catalog from IndexedDB on mount if available
+  useEffect(() => {
+    let isMounted = true;
+    loadProductsFromStorage().then((saved) => {
+      if (isMounted && saved && saved.length > 0) {
+        setProducts(saved);
+      }
+    });
+    loadStoresFromStorage().then((savedStores) => {
+      if (isMounted && savedStores && savedStores.length > 0) {
+        setPartnerStores(savedStores);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Selected sneakers for multi-selection ordering
   const [bulkSelectedProductIds, setBulkSelectedProductIds] = useState<string[]>([]);
@@ -92,17 +112,17 @@ export default function App() {
 
   const catalogRef = useRef<HTMLDivElement>(null);
 
-  // Persist state changes
+  // Persist state changes safely via storage service (IndexedDB + safe localStorage backup)
   useEffect(() => {
-    localStorage.setItem('kicksluxe_products', JSON.stringify(products));
+    saveProductsToStorage(products);
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('kicksluxe_stores', JSON.stringify(partnerStores));
+    saveStoresToStorage(partnerStores);
   }, [partnerStores]);
 
   useEffect(() => {
-    localStorage.setItem('kicksluxe_cart', JSON.stringify(cart));
+    saveCartToStorage(cart);
   }, [cart]);
 
   // Check live AI status from backend
@@ -306,7 +326,15 @@ export default function App() {
 
   // Products management handlers
   const handlePublishExtractedCandidates = (newProducts: SneakerProduct[]) => {
-    setProducts((prev) => [...newProducts, ...prev]);
+    if (!newProducts || newProducts.length === 0) return;
+    setProducts((prev) => {
+      const existingIds = new Set(prev.map((p) => p.id));
+      const existingSkus = new Set(prev.map((p) => (p.sku || '').toLowerCase().trim()));
+      const uniqueNew = newProducts.filter(
+        (p) => !existingIds.has(p.id) && (!p.sku || !existingSkus.has(p.sku.toLowerCase().trim()))
+      );
+      return [...uniqueNew, ...prev];
+    });
   };
 
   const handleAddManualProduct = (newProduct: SneakerProduct) => {
