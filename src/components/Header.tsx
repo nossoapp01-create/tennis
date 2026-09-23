@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2 text-zinc-400">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="font-mono-sku text-[11px] tracking-wider text-zinc-300">
-            VAULT STATUS: GRADE DISPONÍVEL • ENVIO BLINDADO PARA TODO O BRASIL
+            VAULT STATUS: GRADE DISPONÍVEL • ENVIO BLINDADO PARA TODA A EUROPA
           </span>
         </div>
         <div className="flex items-center gap-4 text-zinc-400 text-[11px]">

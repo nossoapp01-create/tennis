@@ -25,7 +25,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin }) => {
             </p>
             <div className="flex items-center gap-2 text-emerald-400 font-mono-sku text-[11px] pt-1">
               <ShieldCheck className="w-4 h-4" />
-              <span>COFRE BLINDADO SÃO PAULO / BR</span>
+              <span>COFRE BLINDADO • ENVIO PARA TODA A EUROPA</span>
             </div>
           </div>
 

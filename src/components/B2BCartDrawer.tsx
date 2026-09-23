@@ -213,10 +213,10 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                         <span className="font-mono-sku text-[10px] text-amber-400 font-bold">
                           REF #{item.product.sku}
                         </span>
-                        <h4 className="text-xs font-syne font-bold text-white line-clamp-1">
+                        <h4 className="text-xs font-jakarta font-bold text-white line-clamp-1">
                           {item.product.name}
                         </h4>
-                        <span className="text-[11px] font-mono-sku text-zinc-400">
+                        <span className="text-[11px] font-jakarta font-semibold text-zinc-400 tabular-nums">
                           {fmt(unit)} / par
                         </span>
                       </div>
@@ -270,7 +270,7 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                   {/* Item Subtotal */}
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
                     <span className="text-zinc-400 font-jakarta">Subtotal deste modelo:</span>
-                    <span className="font-syne font-bold text-white">{fmt(itemTotalPairs * unit)}</span>
+                    <span className="font-jakarta font-bold text-white tabular-nums">{fmt(itemTotalPairs * unit)}</span>
                   </div>
                 </div>
               );
@@ -292,24 +292,24 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                 <>
                   <div className="flex justify-between text-zinc-400">
                     <span>Valor em Tabela Varejo:</span>
-                    <span className="text-zinc-400 line-through">{fmt(totalRetailValue)}</span>
+                    <span className="text-zinc-400 line-through tabular-nums">{fmt(totalRetailValue)}</span>
                   </div>
                   {tierDiscountPercent > 0 && (
                     <div className="flex justify-between text-emerald-400">
                       <span>Desconto Adicional por Volume ({tierDiscountPercent}%):</span>
-                      <span>-{fmt(totalWholesaleValue * (tierDiscountPercent / 100))}</span>
+                      <span className="tabular-nums">-{fmt(totalWholesaleValue * (tierDiscountPercent / 100))}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-emerald-400 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
                     <span className="font-bold">Lucro Líquido Estimado na Revenda:</span>
-                    <span className="font-bold">+{fmt(estimatedProfit)}</span>
+                    <span className="font-bold tabular-nums">+{fmt(estimatedProfit)}</span>
                   </div>
                 </>
               )}
 
-              <div className="flex justify-between text-base font-syne font-extrabold text-white pt-2 border-t border-white/10">
+              <div className="flex justify-between text-base font-jakarta font-bold text-white pt-2 border-t border-white/10">
                 <span>Total a Faturar:</span>
-                <span className="text-amber-400 text-xl">{fmt(effectiveTotal)}</span>
+                <span className="text-amber-400 text-xl font-bold tabular-nums">{fmt(effectiveTotal)}</span>
               </div>
             </div>
 

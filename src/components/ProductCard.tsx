@@ -172,10 +172,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span className="text-zinc-500">{product.category}</span>
           </div>
 
-          {/* Product Name with 3D Depth */}
+          {/* Product Name with Clean Typography */}
           <h3
             onClick={() => onQuickView(product)}
-            className="text-sm md:text-base font-syne font-extrabold text-white tracking-wide mt-1 line-clamp-1 hover:text-amber-300 cursor-pointer transition-colors text-3d-white"
+            className="text-sm md:text-base font-jakarta font-bold text-white tracking-tight mt-1 line-clamp-1 hover:text-amber-300 cursor-pointer transition-colors"
           >
             {product.name}
           </h3>
@@ -186,7 +186,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </p>
         </div>
 
-        {/* Pricing Area: Varejo vs Atacado with 3D Gold Accent */}
+        {/* Pricing Area: Varejo vs Atacado with Traditional Clean Numerals */}
         <div className="bg-[#181719] p-3 rounded-xl border border-white/10 shadow-inner">
           {mode === 'atacado' ? (
             <div>
@@ -194,12 +194,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 <span className="text-[11px] font-mono-sku text-amber-400 font-bold uppercase tracking-wider">
                   Atacado (10+ un):
                 </span>
-                <span className="text-xl font-syne font-extrabold text-3d-gold">
+                <span className="text-xl font-jakarta font-bold text-amber-400 tracking-tight tabular-nums">
                   {formattedWholesalePrice}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-1.5 pt-1.5 border-t border-white/5">
-                <span>Varejo sugerido: {formattedRetailPrice}</span>
+              <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-1.5 pt-1.5 border-t border-white/5 font-jakarta">
+                <span>Varejo sugerido: <strong className="text-zinc-300 font-semibold tabular-nums">{formattedRetailPrice}</strong></span>
                 <span className="text-emerald-400 font-mono-sku font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                   +{product.profitMarginPct}% margem
@@ -212,7 +212,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 <span className="text-[11px] font-mono-sku text-zinc-400 uppercase tracking-wider">
                   Preço Varejo:
                 </span>
-                <span className="text-xl font-syne font-extrabold text-3d-white">
+                <span className="text-xl font-jakarta font-bold text-white tracking-tight tabular-nums">
                   {formattedRetailPrice}
                 </span>
               </div>
@@ -227,7 +227,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Size Selection Pills with 3D Bevel */}
         <div>
           <div className="flex items-center justify-between text-[11px] font-mono-sku text-zinc-400 mb-1.5">
-            <span>Grade Europeia / BR:</span>
+            <span>Grade Europeia (EU):</span>
             <span className="text-amber-300 font-bold text-3d-subtle">Tam {selectedSize}</span>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -239,7 +239,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   e.stopPropagation();
                   setSelectedSize(s);
                 }}
-                className={`w-7 h-7 text-[11px] font-mono-sku rounded flex items-center justify-center transition-all ${
+                className={`w-7 h-7 text-[11px] font-jakarta font-bold rounded flex items-center justify-center transition-all ${
                   selectedSize === s
                     ? 'badge-3d-gold text-black font-extrabold shadow-md scale-105'
                     : 'badge-3d-dark text-zinc-300 hover:text-white hover:border-white/20'

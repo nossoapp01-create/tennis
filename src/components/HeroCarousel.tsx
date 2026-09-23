@@ -127,7 +127,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
             {/* Trust Metrics Pill with 3D Depth */}
             <div className="flex items-center gap-6 pt-4 border-t border-white/10 mt-2">
               <div>
-                <div className="text-2xl md:text-3xl font-syne font-extrabold text-3d-gold tracking-tight">
+                <div className="text-2xl md:text-3xl font-jakarta font-extrabold text-amber-400 tracking-tight tabular-nums">
                   {slide.statNumber}
                 </div>
                 <div className="text-[11px] font-mono-sku text-zinc-400">

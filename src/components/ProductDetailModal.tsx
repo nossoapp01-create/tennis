@@ -149,7 +149,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </span>
                 )}
               </div>
-              <h2 className="text-xl md:text-2xl font-syne font-extrabold text-white mt-1 text-3d-white">
+              <h2 className="text-xl md:text-2xl font-jakarta font-bold text-white mt-1 tracking-tight">
                 {product.name}
               </h2>
 
@@ -158,13 +158,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <>
                     <div>
                       <span className="text-[11px] font-mono-sku text-zinc-400 block font-semibold uppercase">PREÇO ATACADO (10+ UN)</span>
-                      <span className="text-2xl font-syne font-extrabold text-3d-gold">
+                      <span className="text-2xl font-jakarta font-bold text-amber-400 tracking-tight tabular-nums">
                         {formattedWholesalePrice}
                       </span>
                     </div>
                     <div>
                       <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">SUGESTÃO VAREJO</span>
-                      <span className="text-sm font-syne text-zinc-400 line-through">
+                      <span className="text-sm font-jakarta text-zinc-400 line-through tabular-nums">
                         {formattedRetailPrice}
                       </span>
                     </div>
@@ -175,7 +175,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 ) : (
                   <div>
                     <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">PREÇO VAREJO</span>
-                    <span className="text-2xl font-syne font-extrabold text-3d-white">
+                    <span className="text-2xl font-jakarta font-bold text-white tracking-tight tabular-nums">
                       {formattedRetailPrice}
                     </span>
                   </div>
