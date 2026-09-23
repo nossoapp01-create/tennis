@@ -70,28 +70,50 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </a>
 
-          {/* Mode Switcher with 3D Bevels */}
-          <div className="hidden lg:flex items-center bg-[#171618] p-1 rounded-full border border-white/10 shadow-inner">
+          {/* Mode Switcher - Ultra-Crisp High Contrast Segmented Toggle */}
+          <div className={`hidden lg:flex items-center p-1 rounded-full border shadow-inner transition-colors ${
+            isLight
+              ? 'bg-zinc-200/90 border-zinc-300'
+              : 'bg-[#0d0c0e] border-white/15 shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]'
+          } gap-1`}>
             <button
               onClick={() => onToggleMode('varejo')}
-              className={`px-3.5 py-1 text-xs font-semibold rounded-full transition-all active:scale-95 ${
+              className={`px-4 py-1.5 text-xs rounded-full transition-all flex items-center gap-1.5 active:scale-95 ${
                 mode === 'varejo'
-                  ? 'bg-gradient-to-r from-zinc-100 to-white text-black shadow-md font-bold'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-zinc-100 to-white text-zinc-950 font-black shadow-[0_2px_10px_rgba(255,255,255,0.25)] border-t border-white'
+                  : isLight
+                    ? 'text-zinc-700 hover:text-zinc-950 font-semibold hover:bg-black/5'
+                    : 'text-zinc-300 hover:text-white font-semibold hover:bg-white/5'
               }`}
             >
-              Varejo Prime
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                mode === 'varejo' ? 'bg-zinc-950' : isLight ? 'bg-zinc-400' : 'bg-zinc-400'
+              }`} />
+              <span>Varejo Prime</span>
             </button>
             <button
               onClick={() => onToggleMode('atacado')}
-              className={`px-4 py-1 text-xs font-bold rounded-full transition-all flex items-center gap-1.5 active:scale-95 ${
+              className={`px-4 py-1.5 text-xs rounded-full transition-all flex items-center gap-1.5 active:scale-95 ${
                 mode === 'atacado'
-                  ? 'badge-3d-gold text-black shadow-lg shadow-amber-500/20'
-                  : 'text-amber-400/80 hover:text-amber-400'
+                  ? 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 text-zinc-950 font-black shadow-[0_2px_14px_rgba(245,158,11,0.35)] border-t border-amber-200'
+                  : isLight
+                    ? 'text-amber-800 hover:text-amber-950 font-bold hover:bg-black/5'
+                    : 'text-amber-300 hover:text-amber-200 font-bold hover:bg-white/5'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-black"></span>
-              <span>Atacado B2B (10+ un)</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                mode === 'atacado' ? 'bg-zinc-950' : 'bg-amber-400'
+              }`} />
+              <span>Atacado B2B</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono-sku font-extrabold ${
+                mode === 'atacado'
+                  ? 'bg-black/85 text-amber-300 shadow-sm'
+                  : isLight
+                    ? 'bg-amber-200 text-amber-900'
+                    : 'bg-amber-400/20 text-amber-300'
+              }`}>
+                10+ un
+              </span>
             </button>
           </div>
         </div>
@@ -183,22 +205,40 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 bg-[#181719] p-0.5 rounded-full border border-white/10">
+          <div className={`flex flex-1 p-1 rounded-full border shadow-inner gap-1 ${
+            isLight
+              ? 'bg-zinc-200/90 border-zinc-300'
+              : 'bg-[#0d0c0e] border-white/15 shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]'
+          }`}>
             <button
               onClick={() => onToggleMode('varejo')}
-              className={`flex-1 py-1 text-xs font-semibold rounded-full ${
-                mode === 'varejo' ? 'bg-white text-black font-bold shadow' : 'text-zinc-400'
+              className={`flex-1 py-1.5 text-xs rounded-full transition-all flex items-center justify-center gap-1 active:scale-95 ${
+                mode === 'varejo'
+                  ? 'bg-gradient-to-r from-zinc-100 to-white text-zinc-950 font-black shadow-md border-t border-white'
+                  : isLight
+                    ? 'text-zinc-700 hover:text-zinc-950 font-semibold'
+                    : 'text-zinc-300 hover:text-white font-semibold'
               }`}
             >
-              Varejo
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                mode === 'varejo' ? 'bg-zinc-950' : 'bg-zinc-400'
+              }`} />
+              <span>Varejo</span>
             </button>
             <button
               onClick={() => onToggleMode('atacado')}
-              className={`flex-1 py-1 text-xs font-bold rounded-full ${
-                mode === 'atacado' ? 'badge-3d-gold text-black shadow' : 'text-amber-400'
+              className={`flex-1 py-1.5 text-xs rounded-full transition-all flex items-center justify-center gap-1 active:scale-95 ${
+                mode === 'atacado'
+                  ? 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/30 border-t border-amber-200'
+                  : isLight
+                    ? 'text-amber-800 hover:text-amber-950 font-bold'
+                    : 'text-amber-300 hover:text-amber-200 font-bold'
               }`}
             >
-              Atacado B2B
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                mode === 'atacado' ? 'bg-zinc-950' : 'bg-amber-400'
+              }`} />
+              <span>Atacado B2B</span>
             </button>
           </div>
 
