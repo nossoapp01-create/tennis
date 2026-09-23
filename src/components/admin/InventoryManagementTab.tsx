@@ -20,7 +20,12 @@ import {
   Copy,
   ExternalLink,
   HelpCircle,
-  RefreshCw
+  RefreshCw,
+  Pencil,
+  X,
+  Percent,
+  TrendingUp,
+  SlidersHorizontal
 } from 'lucide-react';
 import { SneakerProduct, PartnerStore } from '../../types';
 import { formatCurrency } from '../../utils/currency';
@@ -31,6 +36,7 @@ interface InventoryManagementTabProps {
   onAddProduct: (product: SneakerProduct) => void;
   onDeleteProduct: (productId: string) => void;
   onBulkUpdateProducts?: (updated: SneakerProduct[]) => void;
+  onUpdateProductPrices?: (productId: string, wholesalePrice: number, retailPrice: number) => void;
   onImportCatalog?: (products: SneakerProduct[], mode?: 'merge' | 'replace') => void;
 }
 
@@ -40,12 +46,23 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
   onAddProduct,
   onDeleteProduct,
   onBulkUpdateProducts,
+  onUpdateProductPrices,
   onImportCatalog,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBrand, setFilterBrand] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStore, setFilterStore] = useState('all');
+
+  // Single Product Price Editing State
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [inlineWholesale, setInlineWholesale] = useState<string>('');
+  const [inlineRetail, setInlineRetail] = useState<string>('');
+
+  // Dedicated Price Edit Modal State
+  const [priceModalProduct, setPriceModalProduct] = useState<SneakerProduct | null>(null);
+  const [modalWholesale, setModalWholesale] = useState<string>('');
+  const [modalRetail, setModalRetail] = useState<string>('');
 
   // Bulk selection and repricing states
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
@@ -195,6 +212,97 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
       setSelectedProductIds(new Set(filtered.map((p) => p.id)));
     } else {
       setSelectedProductIds(new Set());
+    }
+  };
+
+  // Single Product Price Handlers
+  const handleStartInlineEdit = (prod: SneakerProduct) => {
+    setEditingRowId(prod.id);
+    setInlineWholesale(prod.wholesalePrice.toString());
+    setInlineRetail(prod.retailPrice.toString());
+  };
+
+  const handleSaveInlineEdit = (prod: SneakerProduct) => {
+    const wholesaleNum = parseFloat(inlineWholesale.replace(',', '.'));
+    const retailNum = parseFloat(inlineRetail.replace(',', '.'));
+    if (isNaN(wholesaleNum) || wholesaleNum <= 0 || isNaN(retailNum) || retailNum <= 0) {
+      setFeedbackToast({
+        message: 'Preços inválidos! Informe valores numéricos positivos para atacado e varejo.',
+        type: 'error',
+      });
+      setTimeout(() => setFeedbackToast(null), 3500);
+      return;
+    }
+
+    if (onUpdateProductPrices) {
+      onUpdateProductPrices(prod.id, wholesaleNum, retailNum);
+    } else if (onBulkUpdateProducts) {
+      const margin = Math.round(((retailNum - wholesaleNum) / wholesaleNum) * 100);
+      onBulkUpdateProducts([
+        {
+          ...prod,
+          wholesalePrice: wholesaleNum,
+          retailPrice: retailNum,
+          profitMarginPct: margin,
+        },
+      ]);
+    }
+
+    setEditingRowId(null);
+    setFeedbackToast({
+      message: `Preços atualizados para "${prod.name}" com sucesso!`,
+      type: 'success',
+    });
+    setTimeout(() => setFeedbackToast(null), 3500);
+  };
+
+  const handleOpenPriceModal = (prod: SneakerProduct) => {
+    setPriceModalProduct(prod);
+    setModalWholesale(prod.wholesalePrice.toString());
+    setModalRetail(prod.retailPrice.toString());
+  };
+
+  const handleSavePriceModal = () => {
+    if (!priceModalProduct) return;
+    const wholesaleNum = parseFloat(modalWholesale.replace(',', '.'));
+    const retailNum = parseFloat(modalRetail.replace(',', '.'));
+    if (isNaN(wholesaleNum) || wholesaleNum <= 0 || isNaN(retailNum) || retailNum <= 0) {
+      setFeedbackToast({
+        message: 'Informe valores numéricos válidos maiores que zero.',
+        type: 'error',
+      });
+      setTimeout(() => setFeedbackToast(null), 3500);
+      return;
+    }
+
+    if (onUpdateProductPrices) {
+      onUpdateProductPrices(priceModalProduct.id, wholesaleNum, retailNum);
+    } else if (onBulkUpdateProducts) {
+      const margin = Math.round(((retailNum - wholesaleNum) / wholesaleNum) * 100);
+      onBulkUpdateProducts([
+        {
+          ...priceModalProduct,
+          wholesalePrice: wholesaleNum,
+          retailPrice: retailNum,
+          profitMarginPct: margin,
+        },
+      ]);
+    }
+
+    const prodName = priceModalProduct.name;
+    setPriceModalProduct(null);
+    setFeedbackToast({
+      message: `Preços de "${prodName}" atualizados! Atacado: € ${wholesaleNum.toFixed(2)} | Varejo: € ${retailNum.toFixed(2)}`,
+      type: 'success',
+    });
+    setTimeout(() => setFeedbackToast(null), 4000);
+  };
+
+  const handleApplyMarkupToModal = (markupPercent: number) => {
+    const wholesaleNum = parseFloat(modalWholesale.replace(',', '.'));
+    if (!isNaN(wholesaleNum) && wholesaleNum > 0) {
+      const calculatedRetail = Math.round(wholesaleNum * (1 + markupPercent / 100));
+      setModalRetail(calculatedRetail.toString());
     }
   };
 
@@ -755,16 +863,83 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                       <span className="text-zinc-500 text-[11px] font-mono-sku">{prod.category}</span>
                     </td>
 
-                    <td className="p-3.5 font-mono-sku font-semibold text-white">
-                      {formatCurrency(prod.retailPrice)}
-                    </td>
-
-                    <td className="p-3.5 font-mono-sku font-bold text-amber-300">
-                      {formatCurrency(prod.wholesalePrice)}
+                    <td className="p-3.5 font-mono-sku">
+                      {editingRowId === prod.id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-zinc-500 font-bold text-xs">€</span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="1"
+                            value={inlineRetail}
+                            onChange={(e) => setInlineRetail(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSaveInlineEdit(prod)}
+                            className="w-20 px-2 py-1 bg-black/90 border border-amber-400/80 rounded text-white font-mono-sku text-xs focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                            autoFocus
+                            title="Editar Preço de Varejo Sugerido"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="flex items-center gap-1.5 group/price cursor-pointer hover:text-amber-300 transition-colors"
+                          onClick={() => handleStartInlineEdit(prod)}
+                          title="Clique para editar Varejo Sugerido"
+                        >
+                          <span className="font-semibold text-white group-hover/price:text-amber-300">
+                            {formatCurrency(prod.retailPrice)}
+                          </span>
+                          <Pencil className="w-3 h-3 text-zinc-500 opacity-0 group-hover/price:opacity-100 transition-opacity" />
+                        </div>
+                      )}
                     </td>
 
                     <td className="p-3.5 font-mono-sku">
-                      <span className="text-emerald-400 font-bold">+{prod.profitMarginPct}%</span>
+                      {editingRowId === prod.id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-amber-500 font-bold text-xs">€</span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="1"
+                            value={inlineWholesale}
+                            onChange={(e) => setInlineWholesale(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSaveInlineEdit(prod)}
+                            className="w-20 px-2 py-1 bg-black/90 border border-amber-400 rounded text-amber-300 font-mono-sku text-xs focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                            title="Editar Preço de Atacado B2B"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="flex items-center gap-1.5 group/price cursor-pointer hover:text-amber-200 transition-colors"
+                          onClick={() => handleStartInlineEdit(prod)}
+                          title="Clique para editar Valor de Atacado"
+                        >
+                          <span className="font-bold text-amber-300">
+                            {formatCurrency(prod.wholesalePrice)}
+                          </span>
+                          <Pencil className="w-3 h-3 text-amber-400 opacity-0 group-hover/price:opacity-100 transition-opacity" />
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="p-3.5 font-mono-sku">
+                      {editingRowId === prod.id ? (
+                        (() => {
+                          const w = parseFloat(inlineWholesale.replace(',', '.'));
+                          const r = parseFloat(inlineRetail.replace(',', '.'));
+                          if (!isNaN(w) && w > 0 && !isNaN(r)) {
+                            const m = Math.round(((r - w) / w) * 100);
+                            return (
+                              <span className={m >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                                +{m}%
+                              </span>
+                            );
+                          }
+                          return <span className="text-zinc-500 font-bold">--</span>;
+                        })()
+                      ) : (
+                        <span className="text-emerald-400 font-bold">+{prod.profitMarginPct}%</span>
+                      )}
                     </td>
 
                     <td className="p-3.5">
@@ -777,14 +952,44 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                       </span>
                     </td>
 
-                    <td className="p-3.5 text-right">
-                      <button
-                        onClick={() => onDeleteProduct(prod.id)}
-                        className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
-                        title="Excluir produto do catálogo"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <td className="p-3.5 text-right whitespace-nowrap">
+                      {editingRowId === prod.id ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleSaveInlineEdit(prod)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1 shadow-md transition-all active:scale-95 cursor-pointer"
+                            title="Salvar preços alterados"
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>Salvar</span>
+                          </button>
+                          <button
+                            onClick={() => setEditingRowId(null)}
+                            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                            title="Cancelar edição"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenPriceModal(prod)}
+                            className="px-2.5 py-1 rounded-lg bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 font-syne font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                            title="Abrir painel para editar Varejo Sugerido e Atacado"
+                          >
+                            <Pencil className="w-3 h-3 text-amber-400" />
+                            <span>Editar Preços</span>
+                          </button>
+                          <button
+                            onClick={() => onDeleteProduct(prod.id)}
+                            className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10"
+                            title="Excluir produto do catálogo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -1009,6 +1214,171 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
               >
                 Entendido, Fechar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Price Edit Modal for Single Product */}
+      {priceModalProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-lg bg-[#1c1b1c] border border-amber-400/30 rounded-3xl p-6 shadow-2xl text-white relative">
+            <button
+              onClick={() => setPriceModalProduct(null)}
+              className="absolute top-5 right-5 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+              <img
+                src={priceModalProduct.image}
+                alt={priceModalProduct.name}
+                referrerPolicy="no-referrer"
+                className="w-14 h-14 rounded-xl bg-black/50 p-1 object-contain border border-white/10 shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <span className="font-mono-sku text-[10px] text-amber-400 font-bold block">
+                  #{priceModalProduct.sku} • {priceModalProduct.brand}
+                </span>
+                <h3 className="font-syne font-bold text-base text-white truncate">
+                  {priceModalProduct.name}
+                </h3>
+                <span className="text-[11px] text-zinc-400 font-jakarta block">
+                  Categoria: {priceModalProduct.category}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4 font-jakarta text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Wholesale Price Field */}
+                <div className="bg-black/30 p-3.5 rounded-2xl border border-white/10">
+                  <label className="block text-amber-300 font-syne font-bold mb-1.5 flex items-center justify-between">
+                    <span>Preço de Atacado B2B</span>
+                    <span className="text-[10px] font-mono-sku text-zinc-400 font-normal">10+ unidades</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-amber-400 font-mono-sku font-bold">€</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      value={modalWholesale}
+                      onChange={(e) => setModalWholesale(e.target.value)}
+                      placeholder="Ex: 25.00"
+                      className="w-full bg-[#121113] border border-amber-400/40 rounded-xl pl-8 pr-3 py-2 text-white font-mono-sku font-bold text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Valor faturado ao lojista no lote.
+                  </p>
+                </div>
+
+                {/* Suggested Retail Price Field */}
+                <div className="bg-black/30 p-3.5 rounded-2xl border border-white/10">
+                  <label className="block text-zinc-200 font-syne font-bold mb-1.5 flex items-center justify-between">
+                    <span>Varejo Sugerido</span>
+                    <span className="text-[10px] font-mono-sku text-zinc-400 font-normal">Público Final</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-zinc-400 font-mono-sku font-bold">€</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="1"
+                      value={modalRetail}
+                      onChange={(e) => setModalRetail(e.target.value)}
+                      placeholder="Ex: 140.00"
+                      className="w-full bg-[#121113] border border-white/20 rounded-xl pl-8 pr-3 py-2 text-white font-mono-sku font-bold text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Preço de revenda sugerido na loja.
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Markup Presets */}
+              <div>
+                <label className="block text-zinc-300 font-syne font-semibold mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Calcular Varejo com Margem Rápida sobre Atacado:</span>
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {[
+                    { label: '+80%', val: 80 },
+                    { label: '+100% (2x)', val: 100 },
+                    { label: '+150%', val: 150 },
+                    { label: '+200% (3x)', val: 200 },
+                    { label: '+250%', val: 250 },
+                    { label: '+300% (4x)', val: 300 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.val}
+                      type="button"
+                      onClick={() => handleApplyMarkupToModal(preset.val)}
+                      className="py-1.5 px-2 rounded-lg bg-white/5 hover:bg-amber-400/20 border border-white/10 hover:border-amber-400/40 text-[11px] font-mono-sku text-zinc-300 hover:text-amber-200 font-bold transition-all text-center cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Real-time Profitability Metrics */}
+              {(() => {
+                const w = parseFloat(modalWholesale.replace(',', '.'));
+                const r = parseFloat(modalRetail.replace(',', '.'));
+                const hasValid = !isNaN(w) && w > 0 && !isNaN(r) && r > 0;
+                const profitPerPair = hasValid ? r - w : 0;
+                const marginPct = hasValid ? Math.round(((r - w) / w) * 100) : 0;
+
+                return (
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-black/60 to-black/40 border border-white/10 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-mono-sku uppercase text-zinc-400 block font-semibold">
+                        Lucro Bruto Estimado / Par
+                      </span>
+                      <span className="text-base font-syne font-extrabold text-white">
+                        {hasValid ? `€ ${profitPerPair.toFixed(2)}` : '--'}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[10px] font-mono-sku uppercase text-zinc-400 block font-semibold">
+                        Margem Percentual B2B
+                      </span>
+                      <span
+                        className={`text-base font-mono-sku font-extrabold ${
+                          marginPct >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                      >
+                        {hasValid ? `+${marginPct}%` : '--'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setPriceModalProduct(null)}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 font-syne font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSavePriceModal}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all cursor-pointer"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Salvar Preços Atualizados</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

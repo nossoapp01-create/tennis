@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Sparkles, Plus, Minus, ShoppingBag, Flame } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, Plus, Minus, ShoppingBag, Flame, Pencil, Check } from 'lucide-react';
 import { SneakerProduct, SizeQuantity } from '../types';
 import { formatCurrency } from '../utils/currency';
 
@@ -8,6 +8,7 @@ interface ProductDetailModalProps {
   mode: 'varejo' | 'atacado';
   onClose: () => void;
   onAddToCart: (product: SneakerProduct, mode: 'varejo' | 'atacado', sizeQuantities: SizeQuantity[]) => void;
+  onUpdateProductPrices?: (productId: string, wholesalePrice: number, retailPrice: number) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -15,6 +16,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   mode,
   onClose,
   onAddToCart,
+  onUpdateProductPrices,
 }) => {
   if (!product) return null;
 
@@ -34,6 +36,28 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const [activeTab, setActiveTab] = useState<'specs' | 'materials' | 'authenticity'>('specs');
   const [isZoomed, setIsZoomed] = useState(false);
+
+  // Price editing state
+  const [isEditingPrices, setIsEditingPrices] = useState(false);
+  const [editWholesale, setEditWholesale] = useState(product.wholesalePrice.toString());
+  const [editRetail, setEditRetail] = useState(product.retailPrice.toString());
+  const [priceSaveSuccess, setPriceSaveSuccess] = useState(false);
+
+  const handleSaveDetailPrices = () => {
+    const w = parseFloat(editWholesale.replace(',', '.'));
+    const r = parseFloat(editRetail.replace(',', '.'));
+    if (isNaN(w) || w <= 0 || isNaN(r) || r <= 0) {
+      alert('Por favor, informe valores válidos maiores que zero para atacado e varejo.');
+      return;
+    }
+
+    if (onUpdateProductPrices) {
+      onUpdateProductPrices(product.id, w, r);
+    }
+    setIsEditingPrices(false);
+    setPriceSaveSuccess(true);
+    setTimeout(() => setPriceSaveSuccess(false), 3000);
+  };
 
   const updateQuantity = (size: number, delta: number) => {
     setSizeQuantities((prev) => {
@@ -181,6 +205,118 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Price Edit Section */}
+              {onUpdateProductPrices && (
+                <div className="mt-3 pt-2.5 border-t border-white/5">
+                  {!isEditingPrices ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditWholesale(product.wholesalePrice.toString());
+                        setEditRetail(product.retailPrice.toString());
+                        setIsEditingPrices(true);
+                        setPriceSaveSuccess(false);
+                      }}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-syne font-bold text-amber-400 hover:text-amber-300 transition-colors py-1 px-2 rounded-lg hover:bg-amber-400/10 cursor-pointer"
+                    >
+                      <Pencil className="w-3 h-3 text-amber-400" />
+                      <span>Editar Valores (Varejo Sugerido e Atacado)</span>
+                    </button>
+                  ) : (
+                    <div className="p-3.5 mt-2 rounded-2xl bg-black/60 border border-amber-400/40 space-y-3">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                        <span className="text-[11px] font-syne font-bold text-amber-300 flex items-center gap-1.5">
+                          <Pencil className="w-3.5 h-3.5 text-amber-400" />
+                          Editar Preços deste Modelo
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingPrices(false)}
+                          className="text-zinc-400 hover:text-white p-0.5 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-mono-sku text-amber-300 block mb-1 font-semibold">
+                            Valor Atacado (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0.5"
+                            value={editWholesale}
+                            onChange={(e) => setEditWholesale(e.target.value)}
+                            className="w-full bg-[#181719] border border-amber-400/50 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-mono-sku font-bold focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">
+                            Varejo Sugerido (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="1"
+                            value={editRetail}
+                            onChange={(e) => setEditRetail(e.target.value)}
+                            className="w-full bg-[#181719] border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono-sku font-bold focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Real-time Margin & Profit Preview */}
+                      {(() => {
+                        const w = parseFloat(editWholesale.replace(',', '.'));
+                        const r = parseFloat(editRetail.replace(',', '.'));
+                        if (!isNaN(w) && w > 0 && !isNaN(r) && r > 0) {
+                          const margin = Math.round(((r - w) / w) * 100);
+                          const profit = r - w;
+                          return (
+                            <div className="flex items-center justify-between text-[11px] font-mono-sku bg-white/5 px-2.5 py-1.5 rounded-lg">
+                              <span className="text-zinc-400">
+                                Lucro Estimado: <strong className="text-white">€ {profit.toFixed(2)}</strong>
+                              </span>
+                              <span className={margin >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                                +{margin}% Margem
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingPrices(false)}
+                          className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-zinc-300 text-xs font-semibold cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveDetailPrices}
+                          className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black text-xs font-bold flex items-center gap-1 shadow-md cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Salvar Preços</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {priceSaveSuccess && (
+                    <span className="text-[11px] font-mono-sku text-emerald-400 block mt-1 font-semibold">
+                      ✓ Preços atualizados com sucesso!
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Tabs for Technical Specs, Materials, and Authenticity */}

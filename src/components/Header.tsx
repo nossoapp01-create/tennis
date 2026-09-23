@@ -1,12 +1,12 @@
 import React from 'react';
-import { ShieldCheck, Sparkles, ShoppingBag, SlidersHorizontal, Search, Store, Layers, Sun, Moon } from 'lucide-react';
+import { ShieldCheck, Sparkles, SlidersHorizontal, Search, Store, Layers, Sun, Moon } from 'lucide-react';
 import { AIModelStatus } from '../types';
 
 interface HeaderProps {
   mode: 'varejo' | 'atacado';
   onToggleMode: (mode: 'varejo' | 'atacado') => void;
-  cartCount: number;
-  onOpenCart: () => void;
+  cartCount?: number;
+  onOpenCart?: () => void;
   onOpenAdmin: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
@@ -172,22 +172,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <span className="hidden sm:inline font-syne tracking-wide text-3d-subtle">SUPER ADMIN IA</span>
             <span className="sm:hidden font-syne">ADMIN</span>
-          </button>
-
-          {/* Cart & B2B Manifest Button with 3D Pop */}
-          <button
-            onClick={onOpenCart}
-            className="relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-white via-zinc-100 to-zinc-200 text-black hover:from-zinc-100 hover:to-white transition-all text-xs font-bold shadow-xl border-t border-white active:scale-95"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span className="hidden sm:inline font-syne font-bold">
-              {mode === 'atacado' ? 'Manifesto B2B' : 'Carrinho'}
-            </span>
-            {cartCount > 0 && (
-              <span className="badge-3d-gold text-black font-extrabold text-[10px] w-5 h-5 rounded-full flex items-center justify-center -mr-1 shadow-md">
-                {cartCount}
-              </span>
-            )}
           </button>
         </div>
       </div>

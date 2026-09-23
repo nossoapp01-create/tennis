@@ -456,6 +456,34 @@ export default function App() {
     });
   };
 
+  const handleUpdateProductPrices = (productId: string, wholesalePrice: number, retailPrice: number) => {
+    const margin = Math.round(((retailPrice - wholesalePrice) / wholesalePrice) * 100);
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              wholesalePrice,
+              retailPrice,
+              profitMarginPct: margin,
+            }
+          : p
+      )
+    );
+    if (detailProduct && detailProduct.id === productId) {
+      setDetailProduct((prev) =>
+        prev
+          ? {
+              ...prev,
+              wholesalePrice,
+              retailPrice,
+              profitMarginPct: margin,
+            }
+          : null
+      );
+    }
+  };
+
   const handleImportCatalog = (imported: SneakerProduct[], mode: 'merge' | 'replace' = 'replace') => {
     if (!imported || imported.length === 0) return;
     if (mode === 'replace') {
@@ -719,12 +747,27 @@ export default function App() {
       {/* Footer */}
       <Footer onOpenAdmin={() => setIsAdminOpen(true)} />
 
+      {/* Floating cart button (only when items exist) */}
+      {cartPairsCount > 0 && (
+        <button
+          onClick={() => setIsCartOpen(true)}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-black font-extrabold shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-amber-300/40"
+          aria-label="Abrir carrinho"
+        >
+          <ShoppingBag className="w-5 h-5 text-black" />
+          <span className="text-xs font-syne font-bold uppercase tracking-wider">
+            {cartPairsCount} {cartPairsCount === 1 ? 'par' : 'pares'}
+          </span>
+        </button>
+      )}
+
       {/* Product Detail Modal */}
       <ProductDetailModal
         product={detailProduct}
         mode={mode}
         onClose={() => setDetailProduct(null)}
         onAddToCart={handleAddToCart}
+        onUpdateProductPrices={handleUpdateProductPrices}
       />
 
       {/* B2B Cart & Order Manifest Drawer */}
@@ -751,6 +794,7 @@ export default function App() {
         onAddProduct={handleAddManualProduct}
         onDeleteProduct={handleDeleteProduct}
         onBulkUpdateProducts={handleBulkUpdateProducts}
+        onUpdateProductPrices={handleUpdateProductPrices}
         onImportCatalog={handleImportCatalog}
         aiStatus={aiStatus}
         onRefreshAIStatus={checkAIStatus}
