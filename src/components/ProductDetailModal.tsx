@@ -77,7 +77,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto perspective-1000">
       <div
-        className="relative w-full max-w-4xl bg-[#181719] border border-white/20 rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] my-8 text-zinc-100 flex flex-col md:flex-row max-h-[90vh] highlight-glow-ribbon"
+        className="product-modal-container relative w-full max-w-4xl bg-[#181719] border border-white/20 rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] my-8 text-zinc-100 flex flex-col md:flex-row max-h-[90vh] highlight-glow-ribbon transition-colors duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -90,7 +90,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </button>
 
         {/* Left Column: Image with 3D Depth and Interactive Zoom */}
-        <div className="md:w-1/2 p-6 md:p-8 bg-gradient-to-b from-[#222123] to-[#131314] flex flex-col items-center justify-between border-b md:border-b-0 md:border-r border-white/10 relative overflow-hidden preserve-3d">
+        <div className="product-modal-left md:w-1/2 p-6 md:p-8 bg-gradient-to-b from-[#222123] to-[#131314] flex flex-col items-center justify-between border-b md:border-b-0 md:border-r border-white/10 relative overflow-hidden preserve-3d transition-colors duration-300">
           {/* Top Badges */}
           <div className="w-full flex items-center justify-between z-10">
             <span className="font-mono-sku text-xs px-3 py-1 rounded badge-3d-dark text-amber-400 font-bold">

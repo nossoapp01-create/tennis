@@ -75,7 +75,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
   const slide = SLIDES[currentSlide];
 
   return (
-    <div className="relative w-full overflow-hidden bg-[#101011] border-b border-white/10 perspective-1000">
+    <div className="hero-carousel-container relative w-full overflow-hidden bg-[#101011] border-b border-white/10 perspective-1000 transition-colors duration-300">
       {/* Background ambient lighting accents */}
       <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-amber-500/10 rounded-full blur-[140px] pointer-events-none"></div>
       <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-zinc-800/20 rounded-full blur-[100px] pointer-events-none"></div>

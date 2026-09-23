@@ -118,7 +118,7 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/80 backdrop-blur-sm flex justify-end">
       <div
-        className="w-full max-w-xl bg-[#171617] h-full shadow-2xl border-l border-white/10 flex flex-col justify-between"
+        className="b2b-cart-drawer w-full max-w-xl bg-[#171617] h-full shadow-2xl border-l border-white/10 flex flex-col justify-between transition-colors duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer Header */}

@@ -55,7 +55,7 @@ const TESTIMONIALS: TestimonialItem[] = [
 
 export const Testimonials: React.FC = () => {
   return (
-    <section className="w-full bg-[#121112] py-16 px-4 sm:px-6 lg:px-8 border-t border-b border-white/10 relative overflow-hidden">
+    <section className="testimonials-section w-full bg-[#121112] py-16 px-4 sm:px-6 lg:px-8 border-t border-b border-white/10 relative overflow-hidden transition-colors duration-300">
       {/* Decorative gradient glow */}
       <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-80 h-80 bg-amber-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 

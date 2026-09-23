@@ -109,6 +109,27 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
+  // Theme state: 'dark' (default vault) or 'light' (página clara)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('kicksluxe_theme');
+    return saved === 'light' ? 'light' : 'dark';
+  });
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  useEffect(() => {
+    localStorage.setItem('kicksluxe_theme', theme);
+    if (theme === 'light') {
+      document.documentElement.classList.add('theme-light');
+      document.documentElement.classList.remove('theme-dark');
+    } else {
+      document.documentElement.classList.remove('theme-light');
+      document.documentElement.classList.add('theme-dark');
+    }
+  }, [theme]);
+
   // AI Connection Status
   const [aiStatus, setAiStatus] = useState<AIModelStatus>({
     geminiConnected: true,
@@ -383,9 +404,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#131314] text-[#e5e2e3] flex flex-col font-jakarta relative overflow-x-hidden">
+    <div className={`min-h-screen ${theme === 'light' ? 'theme-light bg-[#f7f7f9] text-[#18181b]' : 'theme-dark bg-[#131314] text-[#e5e2e3]'} flex flex-col font-jakarta relative overflow-x-hidden transition-colors duration-300`}>
       {/* Subtle Ambient Background Vault Glow (Leve brilho atmosférico de fundo de tela) */}
-      <AmbientBackground />
+      <AmbientBackground theme={theme} />
 
       {/* Header */}
       <Header
@@ -399,6 +420,8 @@ export default function App() {
         aiStatus={aiStatus}
         selectedStoreId={selectedStoreId}
         onSelectStore={setSelectedStoreId}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Hero Carousel */}
@@ -471,7 +494,7 @@ export default function App() {
           </div>
 
           {/* Secondary Controls: Brand, Store, Sort, and Search */}
-          <div className="bg-[#181718] p-3 sm:p-4 rounded-2xl border border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="catalog-filter-bar bg-[#181718] p-3 sm:p-4 rounded-2xl border border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs transition-colors">
             {/* Left: Brand & Store Selectors */}
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-zinc-300">

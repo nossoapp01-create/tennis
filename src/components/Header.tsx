@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Sparkles, ShoppingBag, SlidersHorizontal, Search, Store, Layers } from 'lucide-react';
+import { ShieldCheck, Sparkles, ShoppingBag, SlidersHorizontal, Search, Store, Layers, Sun, Moon } from 'lucide-react';
 import { AIModelStatus } from '../types';
 
 interface HeaderProps {
@@ -13,6 +13,8 @@ interface HeaderProps {
   aiStatus: AIModelStatus;
   selectedStoreId: string;
   onSelectStore: (id: string) => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,9 +28,13 @@ export const Header: React.FC<HeaderProps> = ({
   aiStatus,
   selectedStoreId,
   onSelectStore,
+  theme,
+  onToggleTheme,
 }) => {
+  const isLight = theme === 'light';
+
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#131314]/92 backdrop-blur-lg border-b border-white/10 shadow-2xl">
+    <header className="sticky top-0 z-40 w-full bg-[#131314]/92 backdrop-blur-lg border-b border-white/10 shadow-2xl transition-colors duration-300">
       {/* Top micro announcement bar with 3D Depth */}
       <div className="bg-gradient-to-r from-[#171617] via-[#242322] to-[#171617] text-xs py-1.5 px-4 text-center border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-zinc-400">
@@ -104,8 +110,28 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
-        {/* Right Action Icons: Super Admin & Cart */}
-        <div className="flex items-center gap-3">
+        {/* Right Action Icons: Theme Switcher, Super Admin & Cart */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Theme Mode Toggle (Página Clara / Escura) */}
+          <button
+            onClick={onToggleTheme}
+            className="relative px-3 py-1.5 rounded-full badge-3d-dark hover:border-amber-400/50 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md active:scale-95 group"
+            title={isLight ? 'Alternar para Modo Escuro (Dark Vault)' : 'Alternar para Modo Claro (Página Clara)'}
+            aria-label="Alternar página clara ou escura"
+          >
+            {isLight ? (
+              <>
+                <Moon className="w-3.5 h-3.5 text-amber-600 transition-transform group-hover:-rotate-12" />
+                <span className="hidden sm:inline font-syne text-zinc-700 font-extrabold text-[11px]">Tema Escuro</span>
+              </>
+            ) : (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400 transition-transform group-hover:rotate-45" />
+                <span className="hidden sm:inline font-syne text-zinc-200 font-extrabold text-[11px]">Página Clara</span>
+              </>
+            )}
+          </button>
+
           {/* Super Admin Modal Trigger with Highlight Shimmer */}
           <button
             onClick={onOpenAdmin}
@@ -129,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Cart & B2B Manifest Button with 3D Pop */}
           <button
             onClick={onOpenCart}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-white via-zinc-100 to-zinc-200 text-black hover:from-zinc-100 hover:to-white transition-all text-xs font-bold shadow-xl border-t border-white active:scale-95"
+            className="relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-white via-zinc-100 to-zinc-200 text-black hover:from-zinc-100 hover:to-white transition-all text-xs font-bold shadow-xl border-t border-white active:scale-95"
           >
             <ShoppingBag className="w-4 h-4" />
             <span className="hidden sm:inline font-syne font-bold">
@@ -144,7 +170,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Mobile search & mode toggle */}
+      {/* Mobile search, theme toggle & mode switcher */}
       <div className="md:hidden px-4 pb-3 flex flex-col gap-2">
         <div className="relative w-full">
           <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-400" />
@@ -156,22 +182,32 @@ export const Header: React.FC<HeaderProps> = ({
             className="w-full bg-[#181719] border border-white/10 rounded-full pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
           />
         </div>
-        <div className="flex w-full bg-[#181719] p-0.5 rounded-full border border-white/10">
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 bg-[#181719] p-0.5 rounded-full border border-white/10">
+            <button
+              onClick={() => onToggleMode('varejo')}
+              className={`flex-1 py-1 text-xs font-semibold rounded-full ${
+                mode === 'varejo' ? 'bg-white text-black font-bold shadow' : 'text-zinc-400'
+              }`}
+            >
+              Varejo
+            </button>
+            <button
+              onClick={() => onToggleMode('atacado')}
+              className={`flex-1 py-1 text-xs font-bold rounded-full ${
+                mode === 'atacado' ? 'badge-3d-gold text-black shadow' : 'text-amber-400'
+              }`}
+            >
+              Atacado B2B
+            </button>
+          </div>
+
           <button
-            onClick={() => onToggleMode('varejo')}
-            className={`flex-1 py-1 text-xs font-semibold rounded-full ${
-              mode === 'varejo' ? 'bg-white text-black font-bold shadow' : 'text-zinc-400'
-            }`}
+            onClick={onToggleTheme}
+            className="p-1.5 rounded-full badge-3d-dark flex items-center justify-center text-xs"
+            title="Alternar tema claro/escuro"
           >
-            Varejo
-          </button>
-          <button
-            onClick={() => onToggleMode('atacado')}
-            className={`flex-1 py-1 text-xs font-bold rounded-full ${
-              mode === 'atacado' ? 'badge-3d-gold text-black shadow' : 'text-amber-400'
-            }`}
-          >
-            Atacado B2B
+            {isLight ? <Moon className="w-4 h-4 text-amber-600" /> : <Sun className="w-4 h-4 text-amber-400" />}
           </button>
         </div>
       </div>
