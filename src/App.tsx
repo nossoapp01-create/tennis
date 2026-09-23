@@ -74,7 +74,13 @@ export default function App() {
     let isMounted = true;
     loadProductsFromStorage().then((saved) => {
       if (isMounted && saved && saved.length > 0) {
-        setProducts(saved);
+        if (saved.length < INITIAL_PRODUCTS.length) {
+          const existingIds = new Set(saved.map((p) => p.id));
+          const missing = INITIAL_PRODUCTS.filter((p) => !existingIds.has(p.id));
+          setProducts([...saved, ...missing]);
+        } else {
+          setProducts(saved);
+        }
       }
     });
     loadStoresFromStorage().then((savedStores) => {
