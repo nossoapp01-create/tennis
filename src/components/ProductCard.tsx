@@ -135,16 +135,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
       </div>
 
-      {/* 3D Image Container with Cinematic Pop & Real-time Drop Shadow */}
+      {/* 3D Image Container with Cinematic Studio Framing & Real-time Drop Shadow */}
       <div
         onClick={() => onQuickView(product)}
-        className="relative w-full aspect-[4/3] p-4 flex items-center justify-center cursor-pointer overflow-visible preserve-3d"
+        className="relative w-full aspect-[4/3] p-4 flex items-center justify-center cursor-pointer overflow-hidden rounded-t-xl bg-gradient-to-b from-[#1f1e22] via-[#151417] to-[#0d0c0e] border-b border-white/5 preserve-3d"
       >
         <img
           src={product.image}
           alt={product.name}
           referrerPolicy="no-referrer"
-          className="img-3d-pop w-full h-full object-contain filter drop-shadow-[0_14px_22px_rgba(0,0,0,0.85)]"
+          className="img-3d-pop w-full h-full object-contain filter drop-shadow-[0_12px_22px_rgba(0,0,0,0.85)]"
           loading="lazy"
         />
 

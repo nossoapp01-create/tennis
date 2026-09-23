@@ -63,7 +63,9 @@ export function safeLocalStorageGet(key: string): string | null {
 // --- PRODUCTS PERSISTENCE ---
 
 export async function saveProductsToStorage(products: SneakerProduct[]): Promise<void> {
-  // 1. Always save to IndexedDB (unlimited quota, handles hundreds of MBs of images safely)
+  if (!products || !Array.isArray(products)) return;
+
+  // 1. Always save to IndexedDB first (unlimited quota, handles hundreds of MBs of images safely)
   try {
     const db = await getDB();
     const tx = db.transaction(STORE_PRODUCTS, 'readwrite');
@@ -71,8 +73,8 @@ export async function saveProductsToStorage(products: SneakerProduct[]): Promise
     await new Promise<void>((resolve, reject) => {
       const clearReq = store.clear();
       clearReq.onsuccess = () => {
-        let count = 0;
         if (products.length === 0) return resolve();
+        let count = 0;
         for (const prod of products) {
           const addReq = store.put(prod);
           addReq.onsuccess = () => {
@@ -90,27 +92,32 @@ export async function saveProductsToStorage(products: SneakerProduct[]): Promise
     console.warn('[Storage] IndexedDB saveProducts failed:', err);
   }
 
-  // 2. Safe localStorage backup (compacted to prevent QuotaExceededError)
+  // 2. Safe localStorage write
   try {
     const json = JSON.stringify(products);
-    // If json is under 3MB, store full payload
-    if (json.length < 3 * 1024 * 1024) {
-      safeLocalStorageSet('kicksluxe_products', json);
-    } else {
-      // Create light backup without huge base64 for localStorage
+    const success = safeLocalStorageSet('kicksluxe_products', json);
+    if (!success) {
+      // If quota exceeded, save essential items or meta without crashing
       const lightBackup = products.map((p) => ({
         ...p,
-        image: p.image && p.image.length > 2000 ? p.image.slice(0, 100) + '...[indexeddb_stored]' : p.image,
+        image: p.image && p.image.length > 3000 ? p.image.slice(0, 150) + '...[indexeddb]' : p.image,
       }));
-      safeLocalStorageSet('kicksluxe_products_meta', JSON.stringify(lightBackup));
+      safeLocalStorageSet('kicksluxe_products', JSON.stringify(lightBackup));
     }
   } catch (err) {
     console.warn('[Storage] localStorage products backup skipped safely:', err);
   }
+
+  // 3. Broadcast update event so any active components re-sync in real-time
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kicksluxe_catalog_sync', { detail: { count: products.length } }));
+    }
+  } catch {}
 }
 
 export async function loadProductsFromStorage(): Promise<SneakerProduct[] | null> {
-  // 1. Try loading from IndexedDB
+  // 1. Try loading from IndexedDB first
   try {
     const db = await getDB();
     const tx = db.transaction(STORE_PRODUCTS, 'readonly');

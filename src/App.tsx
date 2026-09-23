@@ -89,8 +89,21 @@ export default function App() {
         setPartnerStores(savedStores);
       }
     });
+
+    // Real-time synchronization listener for catalog updates
+    const handleSync = () => {
+      if (!isMounted) return;
+      loadProductsFromStorage().then((saved) => {
+        if (saved && saved.length > 0) {
+          setProducts(saved);
+        }
+      });
+    };
+    window.addEventListener('kicksluxe_catalog_sync', handleSync);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('kicksluxe_catalog_sync', handleSync);
     };
   }, []);
 
@@ -176,23 +189,48 @@ export default function App() {
     checkAIStatus();
   }, []);
 
-  // Filter categories and brands
+  // Calculate total stock units available for a product
+  const getProductStock = (product: SneakerProduct): number => {
+    if (product.stockPerSize) {
+      return Object.values(product.stockPerSize).reduce((acc, qty) => acc + (Number(qty) || 0), 0);
+    }
+    return product.sizes && product.sizes.length > 0 ? 50 : 0;
+  };
+
+  // Filter categories: ONLY show categories that actually have in-stock products with valid images
   const allCategories = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((p) => set.add(p.category));
-    return ['TODOS', ...Array.from(set)];
+    const validCategories = new Set<string>();
+    products.forEach((p) => {
+      const hasValidImage = Boolean(p.image && p.image.trim().length > 10 && !p.image.includes('placeholder'));
+      const inStock = getProductStock(p) > 0;
+      if (hasValidImage && inStock && p.category && p.category.trim()) {
+        validCategories.add(p.category.trim());
+      }
+    });
+    return ['TODOS', ...Array.from(validCategories)];
   }, [products]);
 
   const allBrands = useMemo(() => {
     const set = new Set<string>();
-    products.forEach((p) => set.add(p.brand));
+    products.forEach((p) => {
+      if (getProductStock(p) > 0 && p.brand && p.brand.trim()) {
+        set.add(p.brand.trim());
+      }
+    });
     return ['TODAS', ...Array.from(set)];
   }, [products]);
 
-  // Filter and sort products
+  // Filter and sort products: Only show products IN STOCK with valid images
   const filteredProducts = useMemo(() => {
     return products
       .filter((p) => {
+        // Must be in stock (> 0 pairs)
+        const inStock = getProductStock(p) > 0;
+        if (!inStock) return false;
+
+        // Must have valid image
+        if (!p.image || p.image.trim().length < 5) return false;
+
         const matchesSearch =
           searchQuery === '' ||
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -202,11 +240,11 @@ export default function App() {
 
         const matchesCategory =
           selectedCategory === 'TODOS' ||
-          p.category.toLowerCase() === selectedCategory.toLowerCase();
+          p.category.toLowerCase().trim() === selectedCategory.toLowerCase().trim();
 
         const matchesBrand =
           selectedBrand === 'TODAS' ||
-          p.brand.toLowerCase() === selectedBrand.toLowerCase();
+          p.brand.toLowerCase().trim() === selectedBrand.toLowerCase().trim();
 
         const matchesStore =
           selectedStoreId === 'all' || p.storeId === selectedStoreId;
@@ -356,12 +394,24 @@ export default function App() {
   const handlePublishExtractedCandidates = (newProducts: SneakerProduct[]) => {
     if (!newProducts || newProducts.length === 0) return;
     setProducts((prev) => {
-      const existingIds = new Set(prev.map((p) => p.id));
       const existingSkus = new Set(prev.map((p) => (p.sku || '').toLowerCase().trim()));
-      const uniqueNew = newProducts.filter(
-        (p) => !existingIds.has(p.id) && (!p.sku || !existingSkus.has(p.sku.toLowerCase().trim()))
-      );
-      return [...uniqueNew, ...prev];
+      const preparedNew = newProducts.map((p, idx) => {
+        let finalSku = p.sku || `KL-${Math.floor(1000 + Math.random() * 9000)}`;
+        if (existingSkus.has(finalSku.toLowerCase().trim())) {
+          finalSku = `${finalSku}-${Math.floor(10 + Math.random() * 90)}`;
+        }
+        existingSkus.add(finalSku.toLowerCase().trim());
+        return {
+          ...p,
+          id: p.id || `prod-ext-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+          sku: finalSku,
+          createdAt: p.createdAt || new Date().toISOString(),
+        };
+      });
+
+      const updated = [...preparedNew, ...prev];
+      saveProductsToStorage(updated);
+      return updated;
     });
   };
 
