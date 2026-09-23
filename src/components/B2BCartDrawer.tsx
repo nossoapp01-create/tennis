@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Trash2, ShoppingBag, Send, FileText, Download, CheckCircle2, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
 import { CartItem } from '../types';
+import { formatCurrency } from '../utils/currency';
 
 interface B2BCartDrawerProps {
   isOpen: boolean;
@@ -62,9 +63,8 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
 
   const estimatedProfit = totalRetailValue - effectiveTotal;
 
-  // Format currency helper
-  const fmt = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  // Format currency helper in Euros
+  const fmt = (val: number) => formatCurrency(val);
 
   // Export CSV Manifest
   const handleExportCSV = () => {

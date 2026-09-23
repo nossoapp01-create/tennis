@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, Plus, Check, ShoppingBag, Sparkles, ShieldCheck } from 'lucide-react';
 import { SneakerProduct, SizeQuantity } from '../types';
+import { formatCurrency } from '../utils/currency';
 
 interface ProductCardProps {
   product: SneakerProduct;
@@ -30,15 +31,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     setTimeout(() => setIsAddedRecently(false), 1800);
   };
 
-  const formattedRetailPrice = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(product.retailPrice);
-
-  const formattedWholesalePrice = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(product.wholesalePrice);
+  const formattedRetailPrice = formatCurrency(product.retailPrice);
+  const formattedWholesalePrice = formatCurrency(product.wholesalePrice);
 
   return (
     <div

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, ShieldCheck, Check, Sparkles, Plus, Minus, Layers, AlertCircle, ShoppingBag } from 'lucide-react';
 import { SneakerProduct, SizeQuantity } from '../types';
+import { formatCurrency } from '../utils/currency';
 
 interface ProductDetailModalProps {
   product: SneakerProduct | null;
@@ -61,20 +62,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     onClose();
   };
 
-  const formattedRetailPrice = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(product.retailPrice);
-
-  const formattedWholesalePrice = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(product.wholesalePrice);
-
-  const formattedTotal = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(totalPrice);
+  const formattedRetailPrice = formatCurrency(product.retailPrice);
+  const formattedWholesalePrice = formatCurrency(product.wholesalePrice);
+  const formattedTotal = formatCurrency(totalPrice);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">

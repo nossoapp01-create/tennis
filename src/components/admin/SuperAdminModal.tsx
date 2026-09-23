@@ -17,6 +17,7 @@ interface SuperAdminModalProps {
   onAddProduct: (product: SneakerProduct) => void;
   onDeleteProduct: (productId: string) => void;
   onBulkUpdateProducts?: (updated: SneakerProduct[]) => void;
+  onImportCatalog?: (products: SneakerProduct[], mode?: 'merge' | 'replace') => void;
   aiStatus: AIModelStatus;
   onRefreshAIStatus: () => void;
 }
@@ -33,6 +34,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
   onAddProduct,
   onDeleteProduct,
   onBulkUpdateProducts,
+  onImportCatalog,
   aiStatus,
   onRefreshAIStatus,
 }) => {
@@ -167,6 +169,7 @@ export const SuperAdminModal: React.FC<SuperAdminModalProps> = ({
               onAddProduct={onAddProduct}
               onDeleteProduct={onDeleteProduct}
               onBulkUpdateProducts={onBulkUpdateProducts}
+              onImportCatalog={onImportCatalog}
             />
           )}
         </div>

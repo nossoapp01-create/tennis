@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Store, ShieldCheck, CheckCircle2, Clock, AlertTriangle, Plus, DollarSign, MapPin, Phone, Building2 } from 'lucide-react';
 import { PartnerStore } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
 interface PartnerStoresTabProps {
   stores: PartnerStore[];
@@ -28,8 +29,7 @@ export const PartnerStoresTab: React.FC<PartnerStoresTabProps> = ({
     status: 'authorized'
   });
 
-  const fmt = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const fmt = (val: number) => formatCurrency(val);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();

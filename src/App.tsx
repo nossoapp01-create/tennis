@@ -353,6 +353,19 @@ export default function App() {
     });
   };
 
+  const handleImportCatalog = (imported: SneakerProduct[], mode: 'merge' | 'replace' = 'replace') => {
+    if (!imported || imported.length === 0) return;
+    if (mode === 'replace') {
+      setProducts(imported);
+    } else {
+      setProducts((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const unique = imported.filter((p) => !existingIds.has(p.id));
+        return [...unique, ...prev];
+      });
+    }
+  };
+
   // Total cart items count
   const cartPairsCount = cart.reduce((acc, item) => {
     return acc + item.sizeQuantities.reduce((sAcc, sq) => sAcc + sq.quantity, 0);
@@ -630,6 +643,7 @@ export default function App() {
         onAddProduct={handleAddManualProduct}
         onDeleteProduct={handleDeleteProduct}
         onBulkUpdateProducts={handleBulkUpdateProducts}
+        onImportCatalog={handleImportCatalog}
         aiStatus={aiStatus}
         onRefreshAIStatus={checkAIStatus}
       />
