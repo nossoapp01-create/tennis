@@ -22,7 +22,7 @@ export interface SneakerProduct {
   sizes: number[];
   stockPerSize?: Record<number, number>;
   storeId: string;
-  originSource: 'curated' | 'pdf_extracted' | 'manual' | 'ai_generated';
+  originSource: 'curated' | 'pdf_extracted' | 'manual' | 'ai_generated' | 'verified_catalog';
   createdAt: string;
 }
 

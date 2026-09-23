@@ -41,15 +41,30 @@ export default function App() {
   // Mode: Varejo vs Atacado (10+ un)
   const [mode, setMode] = useState<'varejo' | 'atacado'>('atacado');
 
+  // Version key to guarantee all devices receive the updated verified product data
+  const CATALOG_VERSION_KEY = 'kicksluxe_catalog_verified_v3';
+
   // Products state (persisted or preloaded)
   const [products, setProducts] = useState<SneakerProduct[]>(() => {
-    const saved = localStorage.getItem('kicksluxe_products');
-    if (saved) {
-      try {
+    try {
+      const storedVersion = localStorage.getItem('kicksluxe_catalog_version');
+      if (storedVersion !== CATALOG_VERSION_KEY) {
+        localStorage.setItem('kicksluxe_catalog_version', CATALOG_VERSION_KEY);
+        saveProductsToStorage(INITIAL_PRODUCTS);
+        return INITIAL_PRODUCTS;
+      }
+      const saved = localStorage.getItem('kicksluxe_products');
+      if (saved) {
         const parsed = JSON.parse(saved);
+        // Verify no Nike models labeled as Jordan (e.g. prod-008, prod-012)
+        const p8 = Array.isArray(parsed) ? parsed.find((p: SneakerProduct) => p.id === 'prod-008') : null;
+        if (p8 && p8.brand.toLowerCase() === 'jordan') {
+          saveProductsToStorage(INITIAL_PRODUCTS);
+          return INITIAL_PRODUCTS;
+        }
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {}
-    }
+      }
+    } catch {}
     return INITIAL_PRODUCTS;
   });
 
@@ -73,17 +88,27 @@ export default function App() {
   // Load larger catalog from IndexedDB on mount if available
   useEffect(() => {
     let isMounted = true;
-    loadProductsFromStorage().then((saved) => {
-      if (isMounted && saved && saved.length > 0) {
-        if (saved.length < INITIAL_PRODUCTS.length) {
-          const existingIds = new Set(saved.map((p) => p.id));
-          const missing = INITIAL_PRODUCTS.filter((p) => !existingIds.has(p.id));
-          setProducts([...saved, ...missing]);
-        } else {
-          setProducts(saved);
+    const storedVersion = localStorage.getItem('kicksluxe_catalog_version');
+
+    if (storedVersion !== CATALOG_VERSION_KEY) {
+      localStorage.setItem('kicksluxe_catalog_version', CATALOG_VERSION_KEY);
+      saveProductsToStorage(INITIAL_PRODUCTS);
+      setProducts(INITIAL_PRODUCTS);
+    } else {
+      loadProductsFromStorage().then((saved) => {
+        if (isMounted && saved && saved.length > 0) {
+          // Check if outdated prod-008 exists in indexeddb
+          const p8 = saved.find((p) => p.id === 'prod-008');
+          if (p8 && p8.brand.toLowerCase() === 'jordan') {
+            saveProductsToStorage(INITIAL_PRODUCTS);
+            setProducts(INITIAL_PRODUCTS);
+          } else {
+            setProducts(saved);
+          }
         }
-      }
-    });
+      });
+    }
+
     loadStoresFromStorage().then((savedStores) => {
       if (isMounted && savedStores && savedStores.length > 0) {
         setPartnerStores(savedStores);
