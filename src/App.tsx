@@ -23,6 +23,7 @@ import { Testimonials } from './components/Testimonials';
 import { B2BCartDrawer } from './components/B2BCartDrawer';
 import { SuperAdminModal } from './components/admin/SuperAdminModal';
 import { Footer } from './components/Footer';
+import { AmbientBackground } from './components/AmbientBackground';
 
 import { INITIAL_PRODUCTS } from './data/initialProducts';
 import { INITIAL_PARTNER_STORES } from './data/partnerStores';
@@ -382,7 +383,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#131314] text-[#e5e2e3] flex flex-col font-jakarta">
+    <div className="min-h-screen bg-[#131314] text-[#e5e2e3] flex flex-col font-jakarta relative overflow-x-hidden">
+      {/* Subtle Ambient Background Vault Glow (Leve brilho atmosférico de fundo de tela) */}
+      <AmbientBackground />
+
       {/* Header */}
       <Header
         mode={mode}
@@ -404,19 +408,19 @@ export default function App() {
       />
 
       {/* Main Catalog Section */}
-      <main ref={catalogRef} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main ref={catalogRef} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
         {/* Section Heading & Mode Callout */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono-sku text-amber-400 tracking-widest uppercase font-bold">
+              <span className="text-xs font-mono-sku text-amber-400 tracking-widest uppercase font-bold text-3d-subtle">
                 ACERVO OFICIAL // CATALOG VAULT
               </span>
-              <span className="text-[10px] font-mono-sku px-2 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-300">
+              <span className="text-[10px] font-mono-sku px-2.5 py-0.5 rounded-full badge-3d-gold text-amber-200 font-bold highlight-shimmer">
                 {filteredProducts.length} MODELOS
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-syne font-extrabold text-white tracking-tight mt-1">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-syne font-extrabold text-white tracking-tight mt-1 text-3d-white">
               {mode === 'atacado'
                 ? 'Grade Fechada & Lotes para Revenda de Luxo'
                 : 'Catálogo de Sneakers Exclusivos no Varejo'}
@@ -430,18 +434,18 @@ export default function App() {
 
           {/* Wholesale Mode Tier Summary Pill */}
           {mode === 'atacado' && (
-            <div className="bg-[#1c1b1c] border border-amber-400/30 rounded-2xl p-3.5 flex items-center gap-4 text-xs font-mono-sku shadow-lg">
+            <div className="badge-3d-dark highlight-glow-ribbon rounded-2xl p-3.5 flex items-center gap-4 text-xs font-mono-sku shadow-xl">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-amber-400" />
+                <TrendingUp className="w-4 h-4 text-amber-400 animate-pulse" />
                 <div>
-                  <span className="text-zinc-400 block text-[10px]">TABELA DE ATACADO</span>
-                  <span className="text-white font-bold">10+ Pares Ativado</span>
+                  <span className="text-zinc-400 block text-[10px] uppercase">TABELA DE ATACADO</span>
+                  <span className="text-white font-bold text-3d-subtle">10+ Pares Ativado</span>
                 </div>
               </div>
               <div className="h-7 w-px bg-white/10"></div>
               <div>
-                <span className="text-zinc-400 block text-[10px]">MARGEM MÉDIA</span>
-                <span className="text-emerald-400 font-extrabold">+135% Bruto</span>
+                <span className="text-zinc-400 block text-[10px] uppercase">MARGEM MÉDIA</span>
+                <span className="text-emerald-400 font-extrabold text-3d-subtle">+135% Bruto</span>
               </div>
             </div>
           )}
@@ -455,10 +459,10 @@ export default function App() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-syne font-bold transition-all whitespace-nowrap ${
+                className={`px-4 py-2 rounded-full text-xs font-syne font-bold transition-all whitespace-nowrap active:scale-95 ${
                   selectedCategory === cat
-                    ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
-                    : 'bg-[#1c1b1c] hover:bg-white/10 text-zinc-300 border border-white/5'
+                    ? 'badge-3d-gold text-black shadow-lg scale-105'
+                    : 'badge-3d-dark text-zinc-300 hover:text-white hover:border-white/20'
                 }`}
               >
                 {cat}

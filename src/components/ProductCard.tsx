@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Eye, Plus, Check, ShoppingBag, Sparkles, ShieldCheck } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Eye, Plus, Check, ShoppingBag, Sparkles, ShieldCheck, Flame } from 'lucide-react';
 import { SneakerProduct, SizeQuantity } from '../types';
 import { formatCurrency } from '../utils/currency';
 
@@ -23,6 +23,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [selectedSize, setSelectedSize] = useState<number>(product.sizes[2] || product.sizes[0] || 40);
   const [quantity, setQuantity] = useState<number>(mode === 'atacado' ? 10 : 1);
   const [isAddedRecently, setIsAddedRecently] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // 3D Tilt & Glare States
+  const [tilt, setTilt] = useState({
+    rotateX: 0,
+    rotateY: 0,
+    glareX: 50,
+    glareY: 50,
+    isHovered: false,
+  });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Smooth 3D tilt angles between -7deg and +7deg
+    const rotateX = -((y - centerY) / centerY) * 7.5;
+    const rotateY = ((x - centerX) / centerX) * 7.5;
+    const glareX = (x / rect.width) * 100;
+    const glareY = (y / rect.height) * 100;
+
+    setTilt({ rotateX, rotateY, glareX, glareY, isHovered: true });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ rotateX: 0, rotateY: 0, glareX: 50, glareY: 50, isHovered: false });
+  };
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -34,14 +65,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const formattedRetailPrice = formatCurrency(product.retailPrice);
   const formattedWholesalePrice = formatCurrency(product.wholesalePrice);
 
+  const isHighPriority =
+    product.badge?.includes('BEST-SELLER') ||
+    product.badge?.includes('HYPE') ||
+    product.badge?.includes('GRAIL') ||
+    product.badge?.includes('ICÔNICO') ||
+    product.badge?.includes('ALTA DEMANDA') ||
+    product.badge?.includes('PASSARELA');
+
   return (
     <div
-      className={`vault-card rounded-2xl overflow-hidden flex flex-col group relative transition-all duration-300 ${
-        isSelectedForBulk ? 'ring-2 ring-amber-400 border-amber-400/80 bg-[#222122]' : ''
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        transform: tilt.isHovered
+          ? `perspective(1100px) rotateX(${tilt.rotateX.toFixed(2)}deg) rotateY(${tilt.rotateY.toFixed(2)}deg) translate3d(0, -8px, 0)`
+          : 'perspective(1100px) rotateX(0deg) rotateY(0deg) translate3d(0, 0, 0)',
+        ['--mouse-x' as any]: `${tilt.glareX}%`,
+        ['--mouse-y' as any]: `${tilt.glareY}%`,
+      }}
+      className={`vault-card rounded-2xl overflow-hidden flex flex-col group relative preserve-3d will-change-transform ${
+        isHighPriority ? 'highlight-glow-ribbon' : ''
+      } ${
+        isSelectedForBulk ? 'ring-2 ring-amber-400 border-amber-400/80 bg-[#222122] shadow-[0_0_30px_rgba(212,175,55,0.25)]' : ''
       }`}
     >
+      {/* Dynamic Cursor Light Glare Overlay */}
+      <div className="card-sheen-glare" />
+
       {/* Top Bar with Badge, SKU and Multi-Select Checkbox */}
-      <div className="p-3 pb-0 flex items-center justify-between z-10">
+      <div className="p-3 pb-0 flex items-center justify-between z-10 translate-z-20">
         <div className="flex items-center gap-2">
           {/* Checkbox for bulk selecting multiple sneakers */}
           <button
@@ -61,60 +115,67 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </button>
 
           {/* Reference SKU Code */}
-          <span className="font-mono-sku text-[11px] font-bold px-2 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-300">
+          <span className="font-mono-sku text-[11px] font-bold px-2 py-0.5 rounded badge-3d-dark text-zinc-300">
             #{product.sku}
           </span>
         </div>
 
-        {/* Dynamic Badge */}
+        {/* Dynamic 3D Badge with Highlight Shimmer */}
         {product.badge && (
-          <span className="text-[10px] font-mono-sku font-bold px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/30">
-            {product.badge}
+          <span
+            className={`text-[10px] font-mono-sku font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all ${
+              isHighPriority
+                ? 'badge-3d-gold text-amber-200 highlight-shimmer'
+                : 'badge-3d-dark text-amber-400/90'
+            }`}
+          >
+            {isHighPriority && <Flame className="w-3 h-3 text-amber-400 animate-pulse" />}
+            <span>{product.badge}</span>
           </span>
         )}
       </div>
 
-      {/* Image Container with Cinematic Zoom Effect on Hover */}
+      {/* 3D Image Container with Cinematic Pop & Real-time Drop Shadow */}
       <div
         onClick={() => onQuickView(product)}
-        className="relative w-full aspect-[4/3] p-4 flex items-center justify-center cursor-pointer overflow-hidden"
+        className="relative w-full aspect-[4/3] p-4 flex items-center justify-center cursor-pointer overflow-visible preserve-3d"
       >
         <img
           src={product.image}
           alt={product.name}
           referrerPolicy="no-referrer"
-          className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] transition-all duration-500 ease-out group-hover:scale-115 group-hover:-translate-y-2 group-hover:rotate-1"
+          className="img-3d-pop w-full h-full object-contain filter drop-shadow-[0_14px_22px_rgba(0,0,0,0.85)]"
           loading="lazy"
         />
 
         {/* Hover Quick Action Overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-xl">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onQuickView(product);
             }}
-            className="px-3.5 py-1.5 rounded-full bg-white/90 hover:bg-white text-black text-xs font-bold font-syne flex items-center gap-1.5 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all"
+            className="px-4 py-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black text-xs font-bold font-syne flex items-center gap-1.5 shadow-2xl transform translate-y-3 group-hover:translate-y-0 transition-all active:scale-95"
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>Ver Detalhes</span>
+            <span className="text-3d-dark">Inspecionar em 3D</span>
           </button>
         </div>
       </div>
 
-      {/* Product Information Body */}
-      <div className="p-4 pt-2 flex flex-col flex-1 justify-between gap-3 border-t border-white/5">
+      {/* Product Information Body with 3D Typography */}
+      <div className="p-4 pt-2 flex flex-col flex-1 justify-between gap-3 border-t border-white/5 translate-z-20">
         <div>
           {/* Brand & Category */}
           <div className="flex items-center justify-between text-[11px] font-mono-sku text-zinc-400">
-            <span className="uppercase text-amber-400/90 font-semibold">{product.brand}</span>
-            <span>{product.category}</span>
+            <span className="uppercase text-amber-400/90 font-semibold tracking-wider">{product.brand}</span>
+            <span className="text-zinc-500">{product.category}</span>
           </div>
 
-          {/* Product Name */}
+          {/* Product Name with 3D Depth */}
           <h3
             onClick={() => onQuickView(product)}
-            className="text-sm md:text-base font-syne font-bold text-white tracking-wide mt-1 line-clamp-1 hover:text-amber-400 cursor-pointer transition-colors"
+            className="text-sm md:text-base font-syne font-extrabold text-white tracking-wide mt-1 line-clamp-1 hover:text-amber-300 cursor-pointer transition-colors text-3d-white"
           >
             {product.name}
           </h3>
@@ -125,21 +186,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </p>
         </div>
 
-        {/* Pricing Area: Varejo vs Atacado */}
-        <div className="bg-[#171617] p-2.5 rounded-xl border border-white/5">
+        {/* Pricing Area: Varejo vs Atacado with 3D Gold Accent */}
+        <div className="bg-[#181719] p-3 rounded-xl border border-white/10 shadow-inner">
           {mode === 'atacado' ? (
             <div>
               <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-mono-sku text-amber-400 font-bold uppercase">
+                <span className="text-[11px] font-mono-sku text-amber-400 font-bold uppercase tracking-wider">
                   Atacado (10+ un):
                 </span>
-                <span className="text-lg font-syne font-extrabold text-amber-300">
+                <span className="text-xl font-syne font-extrabold text-3d-gold">
                   {formattedWholesalePrice}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-1 pt-1 border-t border-white/5">
+              <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-1.5 pt-1.5 border-t border-white/5">
                 <span>Varejo sugerido: {formattedRetailPrice}</span>
-                <span className="text-emerald-400 font-mono-sku font-semibold">
+                <span className="text-emerald-400 font-mono-sku font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                   +{product.profitMarginPct}% margem
                 </span>
               </div>
@@ -147,26 +209,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           ) : (
             <div>
               <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-mono-sku text-zinc-400 uppercase">
+                <span className="text-[11px] font-mono-sku text-zinc-400 uppercase tracking-wider">
                   Preço Varejo:
                 </span>
-                <span className="text-lg font-syne font-extrabold text-white">
+                <span className="text-xl font-syne font-extrabold text-3d-white">
                   {formattedRetailPrice}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[11px] text-amber-400/80 mt-1 pt-1 border-t border-white/5">
+              <div className="flex items-center justify-between text-[11px] text-amber-400/90 mt-1.5 pt-1.5 border-t border-white/5 font-mono-sku">
                 <span>Em até 10x sem juros</span>
-                <span className="font-mono-sku">Envio Imediato</span>
+                <span className="text-amber-300 font-bold">Envio Imediato</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Size Selection Pills */}
+        {/* Size Selection Pills with 3D Bevel */}
         <div>
           <div className="flex items-center justify-between text-[11px] font-mono-sku text-zinc-400 mb-1.5">
-            <span>Tamanho BR:</span>
-            <span className="text-white font-bold">{selectedSize}</span>
+            <span>Grade Europeia / BR:</span>
+            <span className="text-amber-300 font-bold text-3d-subtle">Tam {selectedSize}</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {product.sizes.map((s) => (
@@ -179,8 +241,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 }}
                 className={`w-7 h-7 text-[11px] font-mono-sku rounded flex items-center justify-center transition-all ${
                   selectedSize === s
-                    ? 'bg-amber-400 text-black font-extrabold shadow-sm'
-                    : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/5'
+                    ? 'badge-3d-gold text-black font-extrabold shadow-md scale-105'
+                    : 'badge-3d-dark text-zinc-300 hover:text-white hover:border-white/20'
                 }`}
               >
                 {s}
@@ -193,7 +255,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="flex items-center gap-2 pt-1">
           {mode === 'atacado' ? (
             <div className="flex items-center gap-2 w-full">
-              <div className="flex items-center bg-black/40 border border-white/10 rounded-lg px-2 py-1">
+              <div className="flex items-center bg-black/60 border border-white/10 rounded-lg px-2 py-1 badge-3d-dark">
                 <span className="text-[10px] text-zinc-400 font-mono-sku mr-1.5">Qtd:</span>
                 <input
                   type="number"
@@ -208,10 +270,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
               <button
                 onClick={handleAdd}
-                className={`flex-1 py-2 rounded-lg font-syne text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-2.5 rounded-lg font-syne text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-98 ${
                   isAddedRecently
-                    ? 'bg-emerald-500 text-black'
-                    : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black shadow-md shadow-amber-500/10'
+                    ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
+                    : 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black shadow-lg shadow-amber-500/20 border-t border-amber-200/50'
                 }`}
               >
                 {isAddedRecently ? (
@@ -221,7 +283,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   </>
                 ) : (
                   <>
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                     <span>Inserir na Grade</span>
                   </>
                 )}
@@ -230,10 +292,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           ) : (
             <button
               onClick={handleAdd}
-              className={`w-full py-2.5 rounded-lg font-syne text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`w-full py-2.5 rounded-lg font-syne text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-98 ${
                 isAddedRecently
-                  ? 'bg-emerald-500 text-black'
-                  : 'bg-white hover:bg-zinc-200 text-black shadow-md'
+                  ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
+                  : 'bg-gradient-to-r from-zinc-100 to-white hover:from-white hover:to-zinc-200 text-black shadow-lg border-t border-white/80'
               }`}
             >
               {isAddedRecently ? (

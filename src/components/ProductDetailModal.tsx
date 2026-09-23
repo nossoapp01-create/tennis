@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Check, Sparkles, Plus, Minus, Layers, AlertCircle, ShoppingBag } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, Plus, Minus, ShoppingBag, Flame } from 'lucide-react';
 import { SneakerProduct, SizeQuantity } from '../types';
 import { formatCurrency } from '../utils/currency';
 
@@ -66,35 +66,43 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const formattedWholesalePrice = formatCurrency(product.wholesalePrice);
   const formattedTotal = formatCurrency(totalPrice);
 
+  const isHighPriority =
+    product.badge?.includes('BEST-SELLER') ||
+    product.badge?.includes('HYPE') ||
+    product.badge?.includes('GRAIL') ||
+    product.badge?.includes('ICÔNICO') ||
+    product.badge?.includes('ALTA DEMANDA') ||
+    product.badge?.includes('PASSARELA');
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto perspective-1000">
       <div
-        className="relative w-full max-w-4xl bg-[#181718] border border-white/15 rounded-3xl overflow-hidden shadow-2xl my-8 text-zinc-100 flex flex-col md:flex-row max-h-[90vh]"
+        className="relative w-full max-w-4xl bg-[#181719] border border-white/20 rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] my-8 text-zinc-100 flex flex-col md:flex-row max-h-[90vh] highlight-glow-ribbon"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/90 border border-white/20 flex items-center justify-center text-white transition-colors"
+          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full badge-3d-dark hover:border-white/40 flex items-center justify-center text-white transition-all active:scale-95 shadow-lg"
           aria-label="Fechar"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Left Column: Image with Interactive Zoom */}
-        <div className="md:w-1/2 p-6 md:p-8 bg-gradient-to-b from-[#212021] to-[#141415] flex flex-col items-center justify-between border-b md:border-b-0 md:border-r border-white/10 relative overflow-hidden">
+        {/* Left Column: Image with 3D Depth and Interactive Zoom */}
+        <div className="md:w-1/2 p-6 md:p-8 bg-gradient-to-b from-[#222123] to-[#131314] flex flex-col items-center justify-between border-b md:border-b-0 md:border-r border-white/10 relative overflow-hidden preserve-3d">
           {/* Top Badges */}
           <div className="w-full flex items-center justify-between z-10">
-            <span className="font-mono-sku text-xs px-2.5 py-1 rounded bg-black/60 border border-white/10 text-amber-400 font-bold">
+            <span className="font-mono-sku text-xs px-3 py-1 rounded badge-3d-dark text-amber-400 font-bold">
               REF: #{product.sku}
             </span>
-            <span className="text-xs font-mono-sku px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>COFRE CERTIFICADO</span>
+            <span className="text-xs font-mono-sku px-3 py-1 rounded-full badge-3d-gold text-amber-200 flex items-center gap-1.5 shadow-md">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-bold">COFRE CERTIFICADO</span>
             </span>
           </div>
 
-          {/* Interactive Zoomable Image Area */}
+          {/* Interactive Zoomable 3D Image Area */}
           <div
             className="relative w-full my-6 flex items-center justify-center cursor-zoom-in group"
             onClick={() => setIsZoomed(!isZoomed)}
@@ -103,24 +111,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               src={product.image}
               alt={product.name}
               referrerPolicy="no-referrer"
-              className={`max-h-72 object-contain filter drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)] transition-all duration-500 ${
-                isZoomed ? 'scale-150 cursor-zoom-out' : 'group-hover:scale-115'
+              className={`max-h-72 object-contain filter drop-shadow-[0_24px_40px_rgba(0,0,0,0.95)] transition-all duration-500 ${
+                isZoomed ? 'scale-150 rotate-2 cursor-zoom-out' : 'group-hover:scale-115 group-hover:-translate-y-2 group-hover:rotate-1'
               }`}
             />
-            <div className="absolute bottom-1 right-2 text-[10px] font-mono-sku text-zinc-400 bg-black/50 px-2 py-0.5 rounded">
-              {isZoomed ? 'Clique para reduzir' : 'Clique para zoom 150%'}
+            <div className="absolute bottom-1 right-2 text-[10px] font-mono-sku text-zinc-300 badge-3d-dark px-2.5 py-1 rounded shadow">
+              {isZoomed ? 'Clique para reduzir' : 'Clique para zoom 3D'}
             </div>
           </div>
 
-          {/* Key Quick Highlights */}
+          {/* Key Quick Highlights with 3D Bevel */}
           <div className="w-full grid grid-cols-2 gap-2 text-xs font-mono-sku">
-            <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
-              <span className="text-zinc-400 text-[10px] block">SILHUETA / MARCA</span>
-              <span className="text-white font-bold">{product.brand}</span>
+            <div className="badge-3d-dark p-2.5 rounded-xl">
+              <span className="text-zinc-400 text-[10px] block uppercase font-semibold">SILHUETA / MARCA</span>
+              <span className="text-white font-bold text-3d-subtle">{product.brand}</span>
             </div>
-            <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
-              <span className="text-zinc-400 text-[10px] block">CATEGORIA</span>
-              <span className="text-amber-400 font-bold">{product.category}</span>
+            <div className="badge-3d-dark p-2.5 rounded-xl">
+              <span className="text-zinc-400 text-[10px] block uppercase font-semibold">CATEGORIA</span>
+              <span className="text-amber-400 font-bold text-3d-gold">{product.category}</span>
             </div>
           </div>
         </div>
@@ -128,12 +136,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         {/* Right Column: Complete Description & Batch Size Matrix */}
         <div className="md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto">
           <div>
-            {/* Header Title & Pricing */}
+            {/* Header Title & Pricing with 3D Typography */}
             <div className="border-b border-white/10 pb-4">
-              <span className="text-xs font-mono-sku text-amber-400 tracking-wider uppercase font-semibold">
-                {product.brand} // {product.category}
-              </span>
-              <h2 className="text-xl md:text-2xl font-syne font-bold text-white mt-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono-sku text-amber-400 tracking-wider uppercase font-bold">
+                  {product.brand} // {product.category}
+                </span>
+                {isHighPriority && (
+                  <span className="text-[10px] font-mono-sku px-2 py-0.5 rounded-full badge-3d-gold text-amber-200 font-bold flex items-center gap-1 highlight-shimmer">
+                    <Flame className="w-3 h-3 text-amber-400" />
+                    DESTAQUE
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl md:text-2xl font-syne font-extrabold text-white mt-1 text-3d-white">
                 {product.name}
               </h2>
 
@@ -141,25 +157,25 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {mode === 'atacado' ? (
                   <>
                     <div>
-                      <span className="text-[11px] font-mono-sku text-zinc-400 block">PREÇO ATACADO (10+ UN)</span>
-                      <span className="text-2xl font-syne font-extrabold text-amber-400">
+                      <span className="text-[11px] font-mono-sku text-zinc-400 block font-semibold uppercase">PREÇO ATACADO (10+ UN)</span>
+                      <span className="text-2xl font-syne font-extrabold text-3d-gold">
                         {formattedWholesalePrice}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[11px] font-mono-sku text-zinc-400 block">SUGESTÃO VAREJO</span>
-                      <span className="text-sm font-syne text-zinc-300 line-through">
+                      <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">SUGESTÃO VAREJO</span>
+                      <span className="text-sm font-syne text-zinc-400 line-through">
                         {formattedRetailPrice}
                       </span>
                     </div>
-                    <span className="text-xs font-mono-sku font-bold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="text-xs font-mono-sku font-bold px-2.5 py-1 rounded badge-3d-dark text-emerald-400">
                       +{product.profitMarginPct}% Lucro
                     </span>
                   </>
                 ) : (
                   <div>
-                    <span className="text-[11px] font-mono-sku text-zinc-400 block">PREÇO VAREJO</span>
-                    <span className="text-2xl font-syne font-extrabold text-white">
+                    <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">PREÇO VAREJO</span>
+                    <span className="text-2xl font-syne font-extrabold text-3d-white">
                       {formattedRetailPrice}
                     </span>
                   </div>
@@ -173,7 +189,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <button
                   onClick={() => setActiveTab('specs')}
                   className={`pb-2 transition-colors ${
-                    activeTab === 'specs' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-zinc-400 hover:text-white'
+                    activeTab === 'specs' ? 'text-amber-400 border-b-2 border-amber-400 text-3d-subtle' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   Descrição & Especificações
@@ -181,7 +197,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <button
                   onClick={() => setActiveTab('materials')}
                   className={`pb-2 transition-colors ${
-                    activeTab === 'materials' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-zinc-400 hover:text-white'
+                    activeTab === 'materials' ? 'text-amber-400 border-b-2 border-amber-400 text-3d-subtle' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   Materiais & Conservação
@@ -189,7 +205,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <button
                   onClick={() => setActiveTab('authenticity')}
                   className={`pb-2 transition-colors ${
-                    activeTab === 'authenticity' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-zinc-400 hover:text-white'
+                    activeTab === 'authenticity' ? 'text-amber-400 border-b-2 border-amber-400 text-3d-subtle' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   Laudo 1:1 de Autenticidade
@@ -202,7 +218,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div className="space-y-2.5">
                     <p>{product.description}</p>
                     {product.specs && (
-                      <div className="bg-black/20 p-3 rounded-xl border border-white/5 space-y-1.5 text-[11px]">
+                      <div className="badge-3d-dark p-3 rounded-xl space-y-1.5 text-[11px]">
                         <div>
                           <strong className="text-white">Cabedal (Upper):</strong> {product.specs.upper || 'Couro e mesh premium de alta durabilidade.'}
                         </div>
@@ -223,13 +239,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       {product.materials?.map((mat, i) => (
                         <span
                           key={i}
-                          className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-200 text-[11px]"
+                          className="px-2.5 py-1 rounded-full badge-3d-dark text-zinc-200 text-[11px]"
                         >
                           {mat}
                         </span>
                       ))}
                     </div>
-                    <div className="bg-black/20 p-3 rounded-xl border border-white/5 text-[11px]">
+                    <div className="badge-3d-dark p-3 rounded-xl text-[11px]">
                       <strong className="text-amber-400 block mb-1">Guia de Preservação do Sneaker:</strong>
                       <p>{product.specs?.preservationMode || 'Armazenar em temperatura ambiente na caixa original com saquinho dessecante. Limpeza apenas a seco ou pano ligeiramente umedecido.'}</p>
                     </div>
@@ -237,7 +253,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
 
                 {activeTab === 'authenticity' && (
-                  <div className="bg-black/20 p-3 rounded-xl border border-emerald-500/20 space-y-2 text-[11px]">
+                  <div className="badge-3d-dark p-3 rounded-xl space-y-2 text-[11px]">
                     <div className="flex items-center gap-2 text-emerald-400 font-bold font-syne">
                       <ShieldCheck className="w-4 h-4" />
                       <span>Certificação de Autenticidade Garantida</span>
@@ -253,7 +269,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Batch Grade Size Matrix (Grade de Tamanhos para Atacado e Varejo) */}
+            {/* Batch Grade Size Matrix with 3D Bevel Buttons */}
             <div className="mt-2 pt-3 border-t border-white/10">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-syne font-bold text-white">
@@ -272,26 +288,26 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       key={s}
                       className={`p-1.5 rounded-lg border flex flex-col items-center justify-between transition-all ${
                         qty > 0
-                          ? 'bg-amber-400/10 border-amber-400/50'
-                          : 'bg-black/30 border-white/5 text-zinc-400'
+                          ? 'badge-3d-gold'
+                          : 'badge-3d-dark text-zinc-400'
                       }`}
                     >
-                      <span className="font-mono-sku text-xs font-bold text-white">{s}</span>
+                      <span className={`font-mono-sku text-xs font-bold ${qty > 0 ? 'text-black' : 'text-white'}`}>{s}</span>
                       <div className="flex items-center gap-1 my-1">
                         <button
                           type="button"
                           onClick={() => updateQuantity(s, -1)}
-                          className="w-4 h-4 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                          className="w-4 h-4 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white active:scale-90"
                         >
                           <Minus className="w-2.5 h-2.5" />
                         </button>
-                        <span className="font-mono-sku text-xs font-extrabold text-amber-300 w-4 text-center">
+                        <span className={`font-mono-sku text-xs font-extrabold w-4 text-center ${qty > 0 ? 'text-black' : 'text-amber-300'}`}>
                           {qty}
                         </span>
                         <button
                           type="button"
                           onClick={() => updateQuantity(s, 1)}
-                          className="w-4 h-4 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                          className="w-4 h-4 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white active:scale-90"
                         >
                           <Plus className="w-2.5 h-2.5" />
                         </button>
@@ -306,18 +322,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* Bottom Confirmation Bar */}
           <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between gap-4">
             <div>
-              <span className="text-[10px] font-mono-sku text-zinc-400 uppercase block">Subtotal</span>
-              <span className="text-xl font-syne font-extrabold text-white">
+              <span className="text-[10px] font-mono-sku text-zinc-400 uppercase block font-semibold">Subtotal</span>
+              <span className="text-xl font-syne font-extrabold text-3d-gold">
                 {formattedTotal}
               </span>
             </div>
 
             <button
               onClick={handleAddAndClose}
-              className="flex-1 py-3 px-6 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-bold text-xs tracking-wider shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-6 rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-bold text-xs tracking-wider shadow-xl shadow-amber-500/20 border-t border-amber-200/60 transition-all flex items-center justify-center gap-2 active:scale-98"
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>
+              <span className="text-3d-dark font-extrabold">
                 {mode === 'atacado' ? `Adicionar ${totalPairsSelected} Pares ao Manifesto` : 'Adicionar ao Carrinho'}
               </span>
             </button>
