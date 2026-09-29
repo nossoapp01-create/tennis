@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Trash2, ShoppingBag, Send, FileText, Download, CheckCircle2, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Trash2, ShoppingBag, Send, FileText, Download, CheckCircle2, ShieldCheck, Sparkles, TrendingUp, ArrowLeft } from 'lucide-react';
 import { CartItem } from '../types';
 import { formatCurrency } from '../utils/currency';
 
@@ -22,6 +22,17 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
   onRemoveItem,
   onClearCart,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Total pairs across all cart items
@@ -116,7 +127,10 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/80 backdrop-blur-sm flex justify-end">
+    <div
+      className="fixed inset-0 z-50 overflow-hidden bg-black/80 backdrop-blur-sm flex justify-end"
+      onClick={onClose}
+    >
       <div
         className="b2b-cart-drawer w-full max-w-xl bg-[#171617] h-full shadow-2xl border-l border-white/10 flex flex-col justify-between transition-colors duration-300"
         onClick={(e) => e.stopPropagation()}
@@ -146,9 +160,11 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
             )}
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-amber-400 font-syne font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+              title="Fechar Manifesto (ESC)"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 text-amber-400" />
+              <span>Fechar</span>
             </button>
           </div>
         </div>
@@ -189,6 +205,14 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
               <p className="text-xs font-jakarta mt-1 max-w-xs text-zinc-400">
                 Selecione os modelos de tênis no catálogo para montar sua grade de atacado ou compra unitária.
               </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-5 px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-syne font-bold text-xs flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                <span>Continuar Comprando / Fechar</span>
+              </button>
             </div>
           ) : (
             cart.map((item) => {
@@ -314,21 +338,35 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
             </div>
 
             {/* Actions */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                onClick={handleExportCSV}
-                className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-syne font-semibold text-white flex items-center justify-center gap-1.5 transition-all"
-              >
-                <Download className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Exportar CSV</span>
-              </button>
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-syne font-semibold text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Exportar CSV</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={handleWhatsAppCheckout}
+                  className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-syne font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer active:scale-98"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Enviar p/ Concierge</span>
+                </button>
+              </div>
+
+              {/* Botão para Fechar / Continuar Comprando */}
               <button
-                onClick={handleWhatsAppCheckout}
-                className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-syne font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 hover:border-amber-400/40 border border-white/15 text-xs font-syne font-bold text-zinc-200 hover:text-white flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98 cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5" />
-                <span>Enviar p/ Concierge</span>
+                <X className="w-4 h-4 text-amber-400" />
+                <span>Fechar / Continuar Comprando</span>
               </button>
             </div>
           </div>
