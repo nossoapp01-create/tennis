@@ -80,36 +80,36 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
       <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-amber-500/10 rounded-full blur-[140px] pointer-events-none"></div>
       <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-zinc-800/20 rounded-full blur-[100px] pointer-events-none"></div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-7">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           {/* Content Left (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col gap-4 z-10">
+          <div className="lg:col-span-7 flex flex-col gap-2.5 md:gap-3 z-10">
             {/* Tag Pill with 3D Bevel & Highlight Shimmer */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full badge-3d-dark w-fit text-xs font-mono-sku text-amber-300 highlight-shimmer shadow-lg">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full badge-3d-dark w-fit text-[11px] font-mono-sku text-amber-300 highlight-shimmer shadow-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
               <span className="tracking-wider uppercase font-semibold">{slide.tag}</span>
             </div>
 
             {/* Headline with 3D Typography */}
-            <div className="flex flex-col gap-1.5">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-syne font-extrabold tracking-tight text-3d-white leading-[1.08]">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-syne font-extrabold tracking-tight text-3d-white leading-[1.12]">
                 {slide.headline}
               </h1>
-              <p className="text-amber-400 font-syne text-sm sm:text-base md:text-lg font-bold tracking-wide text-3d-gold">
+              <p className="text-amber-400 font-syne text-xs sm:text-sm md:text-base font-bold tracking-wide text-3d-gold">
                 {slide.subheadline}
               </p>
             </div>
 
             {/* Description */}
-            <p className="text-zinc-300 text-sm md:text-base leading-relaxed max-w-xl font-jakarta">
+            <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed max-w-xl font-jakarta">
               {slide.description}
             </p>
 
             {/* CTAs & Stats */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
                 onClick={onExploreCatalog}
-                className="px-6 py-3.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-bold text-sm tracking-wide shadow-xl shadow-amber-500/25 border-t border-amber-200/60 transition-all flex items-center gap-2 group active:scale-95"
+                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-bold text-xs sm:text-sm tracking-wide shadow-lg shadow-amber-500/20 border-t border-amber-200/60 transition-all flex items-center gap-2 group active:scale-95 cursor-pointer"
               >
                 <span className="text-3d-dark font-extrabold">{slide.ctaText}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
@@ -117,31 +117,31 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
 
               <button
                 onClick={onOpenAdmin}
-                className="px-5 py-3.5 rounded-full badge-3d-dark hover:border-white/30 text-white font-syne text-sm font-semibold transition-all flex items-center gap-2 shadow-lg active:scale-95"
+                className="px-4 py-2.5 rounded-full badge-3d-dark hover:border-white/30 text-white font-syne text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-md active:scale-95 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span className="text-3d-subtle">{slide.secondaryCtaText}</span>
               </button>
             </div>
 
             {/* Trust Metrics Pill with 3D Depth */}
-            <div className="flex items-center gap-6 pt-4 border-t border-white/10 mt-2">
+            <div className="flex items-center gap-4 sm:gap-6 pt-3 border-t border-white/10 mt-1">
               <div>
-                <div className="text-2xl md:text-3xl font-jakarta font-extrabold text-amber-400 tracking-tight tabular-nums">
+                <div className="text-xl md:text-2xl font-jakarta font-extrabold text-amber-400 tracking-tight tabular-nums">
                   {slide.statNumber}
                 </div>
-                <div className="text-[11px] font-mono-sku text-zinc-400">
+                <div className="text-[10px] font-mono-sku text-zinc-400">
                   {slide.statLabel}
                 </div>
               </div>
-              <div className="h-8 w-px bg-white/10"></div>
+              <div className="h-7 w-px bg-white/10"></div>
               <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <ShieldCheck className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
+                <ShieldCheck className="w-4 h-4 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
                 <span>Laudo Físico 1:1 e NF Emitida</span>
               </div>
-              <div className="h-8 w-px bg-white/10 hidden sm:block"></div>
+              <div className="h-7 w-px bg-white/10 hidden sm:block"></div>
               <div className="hidden sm:flex items-center gap-2 text-xs text-zinc-400">
-                <TrendingUp className="w-5 h-5 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" />
+                <TrendingUp className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" />
                 <span>Atacado Mínimo 10 Pares</span>
               </div>
             </div>
@@ -150,27 +150,27 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
           {/* Image Showcase Right (5 cols) with 3D Perspective & Floating Elements */}
           <div className="lg:col-span-5 relative flex items-center justify-center perspective-1000">
             {/* Visual Glass Frame with 3D Zoom Preview & Highlight Shimmer */}
-            <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden border border-white/20 bg-gradient-to-br from-[#212022] to-[#121213] shadow-2xl group highlight-glow-ribbon highlight-shimmer transition-transform duration-500 hover:rotate-1 hover:-translate-y-2">
+            <div className="relative w-full max-w-sm h-64 sm:h-72 md:h-80 rounded-2xl overflow-hidden border border-white/20 bg-gradient-to-br from-[#212022] to-[#121213] shadow-2xl group highlight-glow-ribbon highlight-shimmer transition-transform duration-500 hover:rotate-1 hover:-translate-y-1">
               <img
                 src={slide.image}
                 alt={slide.headline}
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-110 filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]"
+                className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-105 filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.8)]"
               />
 
               {/* 3D Floating Badge */}
-              <div className="absolute top-4 right-4 badge-3d-gold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 text-xs text-amber-200 font-mono-sku shadow-xl translate-z-30">
-                <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <div className="absolute top-3.5 right-3.5 badge-3d-gold px-3 py-1 rounded-full flex items-center gap-1.5 text-[11px] text-amber-200 font-mono-sku shadow-xl translate-z-30">
+                <Flame className="w-3 h-3 text-amber-400 animate-pulse" />
                 <span className="font-bold tracking-wider">ORIGINAL GRADE B2B</span>
               </div>
 
               {/* Bottom Subtle Overlay */}
-              <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex items-end justify-between translate-z-20">
+              <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex items-end justify-between translate-z-20">
                 <div>
-                  <span className="text-[11px] font-mono-sku text-amber-400/90 uppercase tracking-widest font-bold">COFRE ATIVO</span>
-                  <p className="text-white font-syne font-bold text-sm text-3d-white">Disponível para Envio Imediato</p>
+                  <span className="text-[10px] font-mono-sku text-amber-400/90 uppercase tracking-widest font-bold">COFRE ATIVO</span>
+                  <p className="text-white font-syne font-bold text-xs sm:text-sm text-3d-white">Disponível para Envio Imediato</p>
                 </div>
-                <span className="text-xs font-mono-sku text-amber-300 badge-3d-gold px-2.5 py-1 rounded font-bold">
+                <span className="text-[11px] font-mono-sku text-amber-300 badge-3d-gold px-2 py-0.5 rounded font-bold">
                   REF #KL-VAULT
                 </span>
               </div>
@@ -179,36 +179,36 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
         </div>
 
         {/* Carousel Indicators & Controls */}
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/5">
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
           <div className="flex items-center gap-2">
             {SLIDES.map((s, idx) => (
               <button
                 key={s.id}
                 onClick={() => setCurrentSlide(idx)}
-                className={`transition-all duration-300 rounded-full ${
+                className={`transition-all duration-300 rounded-full cursor-pointer ${
                   idx === currentSlide
-                    ? 'w-8 h-2 bg-gradient-to-r from-amber-400 to-amber-300 shadow-lg shadow-amber-400/50'
-                    : 'w-2 h-2 bg-white/20 hover:bg-white/40'
+                    ? 'w-7 h-1.5 bg-gradient-to-r from-amber-400 to-amber-300 shadow-md shadow-amber-400/50'
+                    : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/40'
                 }`}
                 aria-label={`Slide ${idx + 1}`}
               />
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCurrentSlide((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)}
-              className="w-8 h-8 rounded-full badge-3d-dark hover:border-white/30 flex items-center justify-center text-white transition-all active:scale-95"
+              className="w-7 h-7 rounded-full badge-3d-dark hover:border-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer"
               aria-label="Slide anterior"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setCurrentSlide((prev) => (prev + 1) % SLIDES.length)}
-              className="w-8 h-8 rounded-full badge-3d-dark hover:border-white/30 flex items-center justify-center text-white transition-all active:scale-95"
+              className="w-7 h-7 rounded-full badge-3d-dark hover:border-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer"
               aria-label="Próximo slide"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
