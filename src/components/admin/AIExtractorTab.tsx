@@ -710,9 +710,9 @@ export const AIExtractorTab: React.FC<AIExtractorTabProps> = ({
     const products: SneakerProduct[] = approved
       .filter((c) => c.image && c.image.length > 20) // Only publish products with real images
       .map((c, index) => {
-        const retail = parseEuroPrice(c.suggestedRetailPrice, 140);
-        const wholesale = parseEuroPrice(c.suggestedWholesalePrice, 55);
-        const margin = wholesale > 0 ? Math.round(((retail - wholesale) / wholesale) * 100) : 120;
+        const retail = parseEuroPrice(c.suggestedRetailPrice, 45);
+        const wholesale = parseEuroPrice(c.suggestedWholesalePrice, 25);
+        const margin = wholesale > 0 ? Math.round(((retail - wholesale) / wholesale) * 100) : 80;
 
         return {
           id: `prod-ext-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,

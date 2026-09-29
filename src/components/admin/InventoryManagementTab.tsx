@@ -25,7 +25,8 @@ import {
   X,
   Percent,
   TrendingUp,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Sparkles
 } from 'lucide-react';
 import { SneakerProduct, PartnerStore } from '../../types';
 import { formatCurrency } from '../../utils/currency';
@@ -66,11 +67,11 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
 
   // Bulk selection and repricing states
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
-  const [bulkPricingTarget, setBulkPricingTarget] = useState<'selected' | 'all'>('selected');
-  const [bulkWholesalePrice, setBulkWholesalePrice] = useState<string>('10');
-  const [bulkRetailPrice, setBulkRetailPrice] = useState<string>('25');
-  const [isAutoRetail, setIsAutoRetail] = useState<boolean>(true);
-  const [autoMarkupPercent, setAutoMarkupPercent] = useState<number>(150);
+  const [bulkPricingTarget, setBulkPricingTarget] = useState<'selected' | 'all'>('all');
+  const [bulkWholesalePrice, setBulkWholesalePrice] = useState<string>('25');
+  const [bulkRetailPrice, setBulkRetailPrice] = useState<string>('45');
+  const [isAutoRetail, setIsAutoRetail] = useState<boolean>(false);
+  const [autoMarkupPercent, setAutoMarkupPercent] = useState<number>(80);
   const [feedbackToast, setFeedbackToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Vercel Sync & Export/Import states
@@ -173,8 +174,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     sku: `KL-${Math.floor(1000 + Math.random() * 9000)}`,
     brand: 'Jordan',
     category: 'High-Top',
-    retailPrice: 140,
-    wholesalePrice: 55,
+    retailPrice: 45,
+    wholesalePrice: 25,
     minWholesaleQty: 10,
     badge: 'GRADE DISPONÍVEL',
     image: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=800&q=80',
@@ -410,12 +411,31 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     setTimeout(() => setFeedbackToast(null), 4500);
   };
 
+  const handleApplyStandardPricingAll = () => {
+    const updated = products.map((p) => ({
+      ...p,
+      wholesalePrice: 25,
+      retailPrice: 45,
+      profitMarginPct: 80,
+    }));
+    if (onBulkUpdateProducts) {
+      onBulkUpdateProducts(updated);
+    }
+    setBulkWholesalePrice('25');
+    setBulkRetailPrice('45');
+    setFeedbackToast({
+      message: `Todos os ${products.length} produtos atualizados com sucesso para Varejo €45 e Atacado €25 (80% margem)!`,
+      type: 'success',
+    });
+    setTimeout(() => setFeedbackToast(null), 4500);
+  };
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProd.name || !newProd.sku) return;
 
-    const retail = newProd.retailPrice || 140;
-    const wholesale = newProd.wholesalePrice || 55;
+    const retail = newProd.retailPrice || 45;
+    const wholesale = newProd.wholesalePrice || 25;
     const margin = Math.round(((retail - wholesale) / wholesale) * 100);
 
     const created: SneakerProduct = {
@@ -700,6 +720,15 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
               <Coins className="w-3.5 h-3.5 text-amber-400" />
               Atalhos de 1-Clique:
             </span>
+            <button
+              type="button"
+              onClick={handleApplyStandardPricingAll}
+              title="Definir todos os produtos do catálogo para Varejo €45 e Atacado €25"
+              className="px-3 py-1 rounded-lg text-[11px] font-mono-sku font-extrabold bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/30 flex items-center gap-1 shadow-sm transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Varejo €45 / Atacado €25 (Todos)</span>
+            </button>
             {[1, 5, 10, 15, 20, 25, 35, 50, 75, 100].map((val) => (
               <button
                 key={val}

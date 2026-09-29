@@ -41,8 +41,8 @@ export default function App() {
   // Mode: Varejo vs Atacado (10+ un)
   const [mode, setMode] = useState<'varejo' | 'atacado'>('atacado');
 
-  // Version key to guarantee all devices receive the updated verified product data
-  const CATALOG_VERSION_KEY = 'kicksluxe_catalog_verified_v3';
+  // Version key to guarantee all devices receive the updated verified product data with Varejo €45 / Atacado €25
+  const CATALOG_VERSION_KEY = 'kicksluxe_catalog_v5_varejo45_atacado25';
 
   // Products state (persisted or preloaded)
   const [products, setProducts] = useState<SneakerProduct[]>(() => {
@@ -50,19 +50,35 @@ export default function App() {
       const storedVersion = localStorage.getItem('kicksluxe_catalog_version');
       if (storedVersion !== CATALOG_VERSION_KEY) {
         localStorage.setItem('kicksluxe_catalog_version', CATALOG_VERSION_KEY);
+        // Force update all products to retail 45 and wholesale 25
+        const saved = localStorage.getItem('kicksluxe_products');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const updated = parsed.map((p: SneakerProduct) => ({
+              ...p,
+              retailPrice: 45,
+              wholesalePrice: 25,
+              profitMarginPct: 80,
+            }));
+            saveProductsToStorage(updated);
+            return updated;
+          }
+        }
         saveProductsToStorage(INITIAL_PRODUCTS);
         return INITIAL_PRODUCTS;
       }
       const saved = localStorage.getItem('kicksluxe_products');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Verify no Nike models labeled as Jordan (e.g. prod-008, prod-012)
-        const p8 = Array.isArray(parsed) ? parsed.find((p: SneakerProduct) => p.id === 'prod-008') : null;
-        if (p8 && p8.brand.toLowerCase() === 'jordan') {
-          saveProductsToStorage(INITIAL_PRODUCTS);
-          return INITIAL_PRODUCTS;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p: SneakerProduct) => ({
+            ...p,
+            retailPrice: 45,
+            wholesalePrice: 25,
+            profitMarginPct: 80,
+          }));
         }
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
     return INITIAL_PRODUCTS;
@@ -92,16 +108,35 @@ export default function App() {
 
     if (storedVersion !== CATALOG_VERSION_KEY) {
       localStorage.setItem('kicksluxe_catalog_version', CATALOG_VERSION_KEY);
-      saveProductsToStorage(INITIAL_PRODUCTS);
-      setProducts(INITIAL_PRODUCTS);
+      loadProductsFromStorage().then((saved) => {
+        if (isMounted && saved && saved.length > 0) {
+          const updated = saved.map((p) => ({
+            ...p,
+            retailPrice: 45,
+            wholesalePrice: 25,
+            profitMarginPct: 80,
+          }));
+          saveProductsToStorage(updated);
+          setProducts(updated);
+        } else {
+          saveProductsToStorage(INITIAL_PRODUCTS);
+          setProducts(INITIAL_PRODUCTS);
+        }
+      });
     } else {
       loadProductsFromStorage().then((saved) => {
         if (isMounted && saved && saved.length > 0) {
-          // Check if outdated prod-008 exists in indexeddb
-          const p8 = saved.find((p) => p.id === 'prod-008');
-          if (p8 && p8.brand.toLowerCase() === 'jordan') {
-            saveProductsToStorage(INITIAL_PRODUCTS);
-            setProducts(INITIAL_PRODUCTS);
+          // Guarantee all loaded products have retail 45 and wholesale 25
+          const needsPriceUpdate = saved.some((p) => p.retailPrice !== 45 || p.wholesalePrice !== 25);
+          if (needsPriceUpdate) {
+            const updated = saved.map((p) => ({
+              ...p,
+              retailPrice: 45,
+              wholesalePrice: 25,
+              profitMarginPct: 80,
+            }));
+            saveProductsToStorage(updated);
+            setProducts(updated);
           } else {
             setProducts(saved);
           }
