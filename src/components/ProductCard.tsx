@@ -23,6 +23,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [selectedSize, setSelectedSize] = useState<number>(product.sizes[2] || product.sizes[0] || 40);
   const [quantity, setQuantity] = useState<number>(mode === 'atacado' ? 10 : 1);
   const [isAddedRecently, setIsAddedRecently] = useState(false);
+  const [showSecondaryImage, setShowSecondaryImage] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // 3D Tilt & Glare States
@@ -141,12 +142,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         className="relative w-full aspect-[4/3] p-2.5 sm:p-3 flex items-center justify-center cursor-pointer overflow-hidden rounded-t-xl bg-gradient-to-b from-[#1f1e22] via-[#151417] to-[#0d0c0e] border-b border-white/5 preserve-3d"
       >
         <img
-          src={product.image}
+          src={
+            (showSecondaryImage || (tilt.isHovered && product.secondaryImage)) && product.secondaryImage
+              ? product.secondaryImage
+              : product.image
+          }
           alt={product.name}
           referrerPolicy="no-referrer"
-          className="img-3d-pop w-full h-full object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.85)]"
+          className="img-3d-pop w-full h-full object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.85)] transition-all duration-300"
           loading="lazy"
         />
+
+        {/* 2nd Image Toggle Badge if available */}
+        {product.secondaryImage && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSecondaryImage(!showSecondaryImage);
+            }}
+            className="absolute bottom-2 left-2 z-20 text-[9px] font-mono-sku px-2 py-0.5 rounded-full badge-3d-dark hover:border-amber-400 text-amber-300 font-bold flex items-center gap-1 shadow cursor-pointer transition-all"
+            title="Alternar entre 1ª e 2ª foto do produto"
+          >
+            <span>{showSecondaryImage ? 'Foto 2/2 (Ângulo 2)' : 'Foto 1/2'}</span>
+          </button>
+        )}
 
         {/* Hover Quick Action Overlay */}
         <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-xl">

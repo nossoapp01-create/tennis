@@ -60,26 +60,52 @@ export function safeLocalStorageGet(key: string): string | null {
   }
 }
 
+// In-memory cache to guarantee instantaneous zero-latency reads and prevent race conditions
+let memoryProductsCache: SneakerProduct[] | null = null;
+let memorySlidesCache: any[] | null = null;
+
 // --- PRODUCTS PERSISTENCE ---
 
 export async function saveProductsToStorage(products: SneakerProduct[]): Promise<void> {
   if (!products || !Array.isArray(products)) return;
 
-  // 1. Always save to IndexedDB first (unlimited quota, handles hundreds of MBs of images safely)
+  // 1. Update in-memory cache immediately
+  memoryProductsCache = [...products];
+
+  // 2. Immediate synchronous write to localStorage (primary cache for instant boot)
+  try {
+    const json = JSON.stringify(products);
+    const success = safeLocalStorageSet('kicksluxe_products', json);
+    safeLocalStorageSet('kicksluxe_products_updated_at', String(Date.now()));
+    if (!success) {
+      // If quota exceeded, save essential items with truncated long base64 strings so localStorage still holds the latest prices & names
+      const lightBackup = products.map((p) => ({
+        ...p,
+        image: p.image && p.image.startsWith('data:') && p.image.length > 50000 ? p.image.slice(0, 100) : p.image,
+        secondaryImage: p.secondaryImage && p.secondaryImage.startsWith('data:') && p.secondaryImage.length > 50000 ? undefined : p.secondaryImage,
+      }));
+      safeLocalStorageSet('kicksluxe_products', JSON.stringify(lightBackup));
+    }
+  } catch (err) {
+    console.warn('[Storage] localStorage products backup skipped safely:', err);
+  }
+
+  // 3. Persistent write to IndexedDB (handles large images, full catalog with zero quota restriction)
   try {
     const db = await getDB();
     const tx = db.transaction(STORE_PRODUCTS, 'readwrite');
     const store = tx.objectStore(STORE_PRODUCTS);
     await new Promise<void>((resolve, reject) => {
+      // Clear and rewrite current catalog snapshot
       const clearReq = store.clear();
       clearReq.onsuccess = () => {
         if (products.length === 0) return resolve();
-        let count = 0;
+        let completed = 0;
         for (const prod of products) {
           const addReq = store.put(prod);
           addReq.onsuccess = () => {
-            count++;
-            if (count === products.length) resolve();
+            completed++;
+            if (completed === products.length) resolve();
           };
           addReq.onerror = () => reject(addReq.error);
         }
@@ -92,58 +118,87 @@ export async function saveProductsToStorage(products: SneakerProduct[]): Promise
     console.warn('[Storage] IndexedDB saveProducts failed:', err);
   }
 
-  // 2. Safe localStorage write
-  try {
-    const json = JSON.stringify(products);
-    const success = safeLocalStorageSet('kicksluxe_products', json);
-    if (!success) {
-      // If quota exceeded, save essential items or meta without crashing
-      const lightBackup = products.map((p) => ({
-        ...p,
-        image: p.image && p.image.length > 3000 ? p.image.slice(0, 150) + '...[indexeddb]' : p.image,
-      }));
-      safeLocalStorageSet('kicksluxe_products', JSON.stringify(lightBackup));
-    }
-  } catch (err) {
-    console.warn('[Storage] localStorage products backup skipped safely:', err);
-  }
-
-  // 3. Broadcast update event so any active components re-sync in real-time
+  // 4. Broadcast sync event containing the full updated products array directly
   try {
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('kicksluxe_catalog_sync', { detail: { count: products.length } }));
+      window.dispatchEvent(
+        new CustomEvent('kicksluxe_catalog_sync', {
+          detail: { products, count: products.length, timestamp: Date.now() },
+        })
+      );
     }
   } catch {}
 }
 
 export async function loadProductsFromStorage(): Promise<SneakerProduct[] | null> {
-  // 1. Try loading from IndexedDB first
+  // 1. Fast return from in-memory cache if available
+  if (memoryProductsCache && Array.isArray(memoryProductsCache) && memoryProductsCache.length > 0) {
+    return memoryProductsCache;
+  }
+
+  // 2. Check IndexedDB first (source of truth for complete images & unlimited storage)
   try {
     const db = await getDB();
     const tx = db.transaction(STORE_PRODUCTS, 'readonly');
     const store = tx.objectStore(STORE_PRODUCTS);
-    const products: SneakerProduct[] = await new Promise((resolve, reject) => {
+    const idbProducts: SneakerProduct[] = await new Promise((resolve, reject) => {
       const req = store.getAll();
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
 
-    if (Array.isArray(products) && products.length > 0) {
-      return products;
+    if (Array.isArray(idbProducts) && idbProducts.length > 0) {
+      memoryProductsCache = idbProducts;
+      // Also update localStorage so synchronous initial state on next refresh has it
+      safeLocalStorageSet('kicksluxe_products', JSON.stringify(idbProducts));
+      return idbProducts;
     }
   } catch (err) {
-    console.warn('[Storage] IndexedDB loadProducts failed, falling back to localStorage:', err);
+    console.warn('[Storage] IndexedDB loadProducts fallback to localStorage:', err);
   }
 
-  // 2. Fallback to localStorage
+  // 3. Fallback to localStorage
   const saved = safeLocalStorageGet('kicksluxe_products');
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memoryProductsCache = parsed;
+        return parsed;
+      }
     } catch {}
   }
 
+  return null;
+}
+
+// --- HERO SLIDES PERSISTENCE ---
+
+export function saveSlidesToStorage(slides: any[]): void {
+  if (!slides || !Array.isArray(slides)) return;
+  memorySlidesCache = [...slides];
+  safeLocalStorageSet('kicksluxe_hero_slides', JSON.stringify(slides));
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kicksluxe_slides_sync', { detail: { slides } }));
+    }
+  } catch {}
+}
+
+export function loadSlidesFromStorage(): any[] | null {
+  if (memorySlidesCache && Array.isArray(memorySlidesCache) && memorySlidesCache.length > 0) {
+    return memorySlidesCache;
+  }
+  const saved = safeLocalStorageGet('kicksluxe_hero_slides');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memorySlidesCache = parsed;
+        return parsed;
+      }
+    } catch {}
+  }
   return null;
 }
 

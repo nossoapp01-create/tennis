@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { SneakerProduct, PartnerStore } from '../../types';
 import { formatCurrency } from '../../utils/currency';
+import { compressUploadedImage } from '../../utils/imageProcessor';
 
 interface InventoryManagementTabProps {
   products: SneakerProduct[];
@@ -44,6 +45,8 @@ interface InventoryManagementTabProps {
     volumeWholesalePrice?: number,
     volumeWholesaleQty?: number
   ) => void;
+  onUpdateProduct?: (product: SneakerProduct) => void;
+  onBulkSetWholesalePriceAll?: (wholesalePrice: number, retailPrice?: number) => void;
   onImportCatalog?: (products: SneakerProduct[], mode?: 'merge' | 'replace') => void;
 }
 
@@ -54,6 +57,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
   onDeleteProduct,
   onBulkUpdateProducts,
   onUpdateProductPrices,
+  onUpdateProduct,
+  onBulkSetWholesalePriceAll,
   onImportCatalog,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,12 +71,29 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
   const [inlineWholesale, setInlineWholesale] = useState<string>('');
   const [inlineRetail, setInlineRetail] = useState<string>('');
 
-  // Dedicated Price Edit Modal State
+  // Dedicated Price Edit Modal State (with image URLs)
   const [priceModalProduct, setPriceModalProduct] = useState<SneakerProduct | null>(null);
+  const [modalImage, setModalImage] = useState<string>('');
+  const [modalSecondaryImage, setModalSecondaryImage] = useState<string>('');
   const [modalWholesale, setModalWholesale] = useState<string>('');
   const [modalRetail, setModalRetail] = useState<string>('');
   const [modalVolumePrice, setModalVolumePrice] = useState<string>('20');
   const [modalVolumeQty, setModalVolumeQty] = useState<number>(50);
+
+  // Dedicated Complete Product Edit Modal State
+  const [editModalProduct, setEditModalProduct] = useState<SneakerProduct | null>(null);
+  const [fullEditName, setFullEditName] = useState<string>('');
+  const [fullEditSku, setFullEditSku] = useState<string>('');
+  const [fullEditBrand, setFullEditBrand] = useState<string>('');
+  const [fullEditCategory, setFullEditCategory] = useState<string>('');
+  const [fullEditImage, setFullEditImage] = useState<string>('');
+  const [fullEditSecondaryImage, setFullEditSecondaryImage] = useState<string>('');
+  const [fullEditRetail, setFullEditRetail] = useState<string>('');
+  const [fullEditWholesale, setFullEditWholesale] = useState<string>('');
+  const [fullEditVolumePrice, setFullEditVolumePrice] = useState<string>('20');
+  const [fullEditVolumeQty, setFullEditVolumeQty] = useState<number>(50);
+  const [fullEditBadge, setFullEditBadge] = useState<string>('');
+  const [fullEditDescription, setFullEditDescription] = useState<string>('');
 
   // Bulk selection and repricing states
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
@@ -247,23 +269,27 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
       return;
     }
 
+    const margin = Math.round(((retailNum - wholesaleNum) / wholesaleNum) * 100);
+    const updatedProd: SneakerProduct = {
+      ...prod,
+      wholesalePrice: wholesaleNum,
+      retailPrice: retailNum,
+      profitMarginPct: margin,
+    };
+
+    if (onUpdateProduct) {
+      onUpdateProduct(updatedProd);
+    }
+    if (onBulkUpdateProducts) {
+      onBulkUpdateProducts([updatedProd]);
+    }
     if (onUpdateProductPrices) {
       onUpdateProductPrices(prod.id, wholesaleNum, retailNum);
-    } else if (onBulkUpdateProducts) {
-      const margin = Math.round(((retailNum - wholesaleNum) / wholesaleNum) * 100);
-      onBulkUpdateProducts([
-        {
-          ...prod,
-          wholesalePrice: wholesaleNum,
-          retailPrice: retailNum,
-          profitMarginPct: margin,
-        },
-      ]);
     }
 
     setEditingRowId(null);
     setFeedbackToast({
-      message: `Preços atualizados para "${prod.name}" com sucesso!`,
+      message: `Preços atualizados para "${prod.name}" com sucesso! Atacado: € ${wholesaleNum.toFixed(2)}`,
       type: 'success',
     });
     setTimeout(() => setFeedbackToast(null), 3500);
@@ -271,10 +297,22 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
 
   const handleOpenPriceModal = (prod: SneakerProduct) => {
     setPriceModalProduct(prod);
+    setModalImage(prod.image);
+    setModalSecondaryImage(prod.secondaryImage || '');
     setModalWholesale(prod.wholesalePrice.toString());
     setModalRetail(prod.retailPrice.toString());
     setModalVolumePrice((prod.volumeWholesalePrice ?? 20).toString());
     setModalVolumeQty(prod.volumeWholesaleQty ?? 50);
+  };
+
+  const handlePriceModalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'primary' | 'secondary') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const compressed = await compressUploadedImage(file, 1000, 1000, 0.85);
+    if (compressed) {
+      if (field === 'primary') setModalImage(compressed);
+      else setModalSecondaryImage(compressed);
+    }
   };
 
   const handleSavePriceModal = () => {
@@ -294,7 +332,25 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     }
 
     const validVolumePrice = !isNaN(volumePriceNum) && volumePriceNum > 0 ? volumePriceNum : 20;
+    const margin = Math.round(((retailNum - wholesaleNum) / wholesaleNum) * 100);
 
+    const updatedProd: SneakerProduct = {
+      ...priceModalProduct,
+      image: modalImage.trim() || priceModalProduct.image,
+      secondaryImage: modalSecondaryImage.trim() || undefined,
+      wholesalePrice: wholesaleNum,
+      retailPrice: retailNum,
+      volumeWholesalePrice: validVolumePrice,
+      volumeWholesaleQty: volumeQtyNum,
+      profitMarginPct: margin,
+    };
+
+    if (onUpdateProduct) {
+      onUpdateProduct(updatedProd);
+    }
+    if (onBulkUpdateProducts) {
+      onBulkUpdateProducts([updatedProd]);
+    }
     if (onUpdateProductPrices) {
       onUpdateProductPrices(
         priceModalProduct.id,
@@ -303,27 +359,93 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
         validVolumePrice,
         volumeQtyNum
       );
-    } else if (onBulkUpdateProducts) {
-      const margin = Math.round(((retailNum - wholesaleNum) / wholesaleNum) * 100);
-      onBulkUpdateProducts([
-        {
-          ...priceModalProduct,
-          wholesalePrice: wholesaleNum,
-          retailPrice: retailNum,
-          volumeWholesalePrice: validVolumePrice,
-          volumeWholesaleQty: volumeQtyNum,
-          profitMarginPct: margin,
-        },
-      ]);
     }
 
     const prodName = priceModalProduct.name;
     setPriceModalProduct(null);
     setFeedbackToast({
-      message: `Preços de "${prodName}" atualizados! Atacado 10+: € ${wholesaleNum.toFixed(2)} | ${volumeQtyNum}+ sortidos: € ${validVolumePrice.toFixed(2)} | Varejo: € ${retailNum.toFixed(2)}`,
+      message: `Preços e fotos de "${prodName}" salvos com sucesso! Atacado: € ${wholesaleNum.toFixed(2)}`,
       type: 'success',
     });
     setTimeout(() => setFeedbackToast(null), 4000);
+  };
+
+  // Full Product Edit Modal Handlers
+  const handleOpenFullEditModal = (prod: SneakerProduct) => {
+    setEditModalProduct(prod);
+    setFullEditName(prod.name);
+    setFullEditSku(prod.sku);
+    setFullEditBrand(prod.brand);
+    setFullEditCategory(prod.category);
+    setFullEditImage(prod.image);
+    setFullEditSecondaryImage(prod.secondaryImage || '');
+    setFullEditRetail(prod.retailPrice.toString());
+    setFullEditWholesale(prod.wholesalePrice.toString());
+    setFullEditVolumePrice((prod.volumeWholesalePrice ?? 20).toString());
+    setFullEditVolumeQty(prod.volumeWholesaleQty ?? 50);
+    setFullEditBadge(prod.badge || '');
+    setFullEditDescription(prod.description || '');
+  };
+
+  const handleSaveFullEditModal = () => {
+    if (!editModalProduct) return;
+    const w = parseFloat(fullEditWholesale.replace(',', '.'));
+    const r = parseFloat(fullEditRetail.replace(',', '.'));
+    const volP = parseFloat(fullEditVolumePrice.replace(',', '.'));
+
+    if (isNaN(w) || w <= 0 || isNaN(r) || r <= 0) {
+      setFeedbackToast({
+        message: 'Por favor, informe valores válidos para atacado e varejo.',
+        type: 'error',
+      });
+      setTimeout(() => setFeedbackToast(null), 3500);
+      return;
+    }
+
+    const validVol = !isNaN(volP) && volP > 0 ? volP : 20;
+    const margin = Math.round(((r - w) / w) * 100);
+
+    const updated: SneakerProduct = {
+      ...editModalProduct,
+      name: fullEditName.trim() || editModalProduct.name,
+      sku: fullEditSku.trim() || editModalProduct.sku,
+      brand: fullEditBrand.trim() || editModalProduct.brand,
+      category: fullEditCategory.trim() || editModalProduct.category,
+      image: fullEditImage.trim() || editModalProduct.image,
+      secondaryImage: fullEditSecondaryImage.trim() || undefined,
+      retailPrice: r,
+      wholesalePrice: w,
+      volumeWholesalePrice: validVol,
+      volumeWholesaleQty: fullEditVolumeQty,
+      profitMarginPct: margin,
+      badge: fullEditBadge.trim() || undefined,
+      description: fullEditDescription.trim() || editModalProduct.description,
+    };
+
+    if (onUpdateProduct) {
+      onUpdateProduct(updated);
+    }
+    if (onBulkUpdateProducts) {
+      onBulkUpdateProducts([updated]);
+    }
+
+    const name = updated.name;
+    setEditModalProduct(null);
+    setFeedbackToast({
+      message: `Modelo "${name}" atualizado com sucesso! Fotos e preços salvos.`,
+      type: 'success',
+    });
+    setTimeout(() => setFeedbackToast(null), 4000);
+  };
+
+  const handleFullEditFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'primary' | 'secondary') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const compressed = await compressUploadedImage(file, 1000, 1000, 0.85);
+    if (compressed) {
+      if (field === 'primary') setFullEditImage(compressed);
+      else setFullEditSecondaryImage(compressed);
+    }
   };
 
   const handleApplyMarkupToModal = (markupPercent: number) => {
@@ -332,6 +454,30 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
       const calculatedRetail = Math.round(wholesaleNum * (1 + markupPercent / 100));
       setModalRetail(calculatedRetail.toString());
     }
+  };
+
+  const handleApplyWholesale33ToAll = () => {
+    if (onBulkSetWholesalePriceAll) {
+      onBulkSetWholesalePriceAll(33);
+    } else if (onBulkUpdateProducts) {
+      const updated = products.map((p) => {
+        const r = p.retailPrice > 33 ? p.retailPrice : 65;
+        const margin = Math.round(((r - 33) / 33) * 100);
+        return {
+          ...p,
+          wholesalePrice: 33,
+          retailPrice: r,
+          profitMarginPct: margin,
+        };
+      });
+      onBulkUpdateProducts(updated);
+    }
+    setBulkWholesalePrice('33');
+    setFeedbackToast({
+      message: `Sucesso! Preço de atacado definido para € 33,00 em TODOS os ${products.length} modelos do catálogo!`,
+      type: 'success',
+    });
+    setTimeout(() => setFeedbackToast(null), 4500);
   };
 
   const handleQuickApplyValue = (val: number) => {
@@ -344,10 +490,11 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     setBulkWholesalePrice(wholesaleVal.toString());
     setBulkRetailPrice(retailVal.toString());
 
+    // When target is 'all', apply to all products in catalog (or filtered if a specific search/filter is active)
     const targetProducts =
       bulkPricingTarget === 'all'
-        ? filtered
-        : filtered.filter((p) => selectedProductIds.has(p.id));
+        ? (filtered.length === products.length || (!searchTerm && filterBrand === 'all' && filterCategory === 'all' && filterStore === 'all') ? products : filtered)
+        : (selectedProductIds.size > 0 ? products.filter((p) => selectedProductIds.has(p.id)) : products);
 
     if (targetProducts.length === 0) {
       setFeedbackToast({
@@ -401,7 +548,7 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
 
     const targetProducts =
       bulkPricingTarget === 'all'
-        ? filtered
+        ? (filtered.length === products.length || !searchTerm ? products : filtered)
         : filtered.filter((p) => selectedProductIds.has(p.id));
 
     if (targetProducts.length === 0) {
@@ -440,6 +587,37 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
 
     setFeedbackToast({
       message: `Precificação aplicada a ${targetProducts.length} modelos! Atacado 10+: €${hasValidWholesale ? wholesaleVal : bulkWholesalePrice} | ${bulkVolumeQty}+ sortidos: €${hasValidVolume ? volumePriceVal : bulkVolumePrice} | Varejo: €${retailVal || 45}`,
+      type: 'success',
+    });
+    setTimeout(() => setFeedbackToast(null), 4500);
+  };
+
+  const handleApplyPricingAllProducts = (
+    wholesaleVal: number = 33,
+    retailVal: number = 45,
+    volumePriceVal: number = 25,
+    volumeQty: number = 50
+  ) => {
+    if (onBulkSetWholesalePriceAll) {
+      onBulkSetWholesalePriceAll(wholesaleVal, retailVal);
+    } else if (onBulkUpdateProducts) {
+      const margin = Math.round(((retailVal - wholesaleVal) / wholesaleVal) * 100);
+      const updated = products.map((p) => ({
+        ...p,
+        wholesalePrice: wholesaleVal,
+        retailPrice: retailVal,
+        volumeWholesalePrice: volumePriceVal,
+        volumeWholesaleQty: volumeQty,
+        profitMarginPct: margin,
+      }));
+      onBulkUpdateProducts(updated);
+    }
+    setBulkWholesalePrice(wholesaleVal.toString());
+    setBulkRetailPrice(retailVal.toString());
+    setBulkVolumePrice(volumePriceVal.toString());
+    setBulkVolumeQty(volumeQty);
+    setFeedbackToast({
+      message: `Todos os ${products.length} produtos atualizados com sucesso: Varejo €${retailVal}, Atacado 10+ €${wholesaleVal} e ${volumeQty}+ sortidos €${volumePriceVal}!`,
       type: 'success',
     });
     setTimeout(() => setFeedbackToast(null), 4500);
@@ -819,6 +997,24 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
             </span>
             <button
               type="button"
+              onClick={handleApplyWholesale33ToAll}
+              title="Definir atacado imediatamente para € 33 em TODOS os modelos do catálogo"
+              className="px-3.5 py-1.5 rounded-xl text-[11px] font-mono-sku font-black bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black flex items-center gap-1.5 shadow-md shadow-amber-400/25 transition-all cursor-pointer border border-amber-300 transform active:scale-95"
+            >
+              <Zap className="w-3.5 h-3.5 fill-black" />
+              <span>⚡ ATACADO € 33 PARA TODOS ({products.length} MODELOS)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPricingAllProducts(33, 45, 25, 50)}
+              title="Definir todos os produtos para: Varejo €45, Atacado 10+ €33 e 50+ sortidos €25"
+              className="px-3 py-1 rounded-lg text-[11px] font-mono-sku font-extrabold bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-400/40 hover:bg-amber-500/30 flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Varejo €45 / Atacado €33 / +50 un €25 (Todos)</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleApplyStandardPricingAll(50)}
               title="Definir todos os produtos para: Varejo €45, Atacado 10+ €25 e 50+ sortidos €20"
               className="px-3 py-1 rounded-lg text-[11px] font-mono-sku font-extrabold bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/30 flex items-center gap-1 shadow-sm transition-all cursor-pointer"
@@ -835,7 +1031,7 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-teal-400" />
               <span>Varejo €45 / Atacado €25 / +100 un €20 (Todos)</span>
             </button>
-            {[1, 5, 10, 15, 20, 25, 35, 50, 75, 100].map((val) => (
+            {[1, 5, 10, 15, 20, 25, 30, 33, 35, 40, 50, 75, 100].map((val) => (
               <button
                 key={val}
                 type="button"
@@ -1113,10 +1309,18 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenFullEditModal(prod)}
+                            className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-200 font-syne font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 shadow-sm cursor-pointer"
+                            title="Editar dados, foto principal e segunda imagem deste modelo"
+                          >
+                            <SlidersHorizontal className="w-3 h-3 text-amber-400" />
+                            <span>Editar Modelo & Fotos</span>
+                          </button>
                           <button
                             onClick={() => handleOpenPriceModal(prod)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 font-syne font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                            className="px-2.5 py-1 rounded-lg bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 font-syne font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 shadow-sm cursor-pointer"
                             title="Abrir painel para editar Varejo Sugerido e Atacado"
                           >
                             <Pencil className="w-3 h-3 text-amber-400" />
@@ -1124,7 +1328,7 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                           </button>
                           <button
                             onClick={() => onDeleteProduct(prod.id)}
-                            className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10"
+                            className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10 cursor-pointer"
                             title="Excluir produto do catálogo"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1433,6 +1637,82 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
             </div>
 
             <div className="mt-5 space-y-4 font-jakarta text-xs">
+              {/* Image Editor directly inside Price Modal */}
+              <div className="bg-black/40 p-3.5 rounded-2xl border border-white/10 space-y-3">
+                <span className="text-[10px] font-mono-sku text-amber-300 font-bold block uppercase">
+                  Fotos do Modelo (1ª e 2ª Imagem):
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-mono-sku text-zinc-300 block font-semibold">
+                        Foto 1 (Principal)
+                      </label>
+                      <label className="text-[10px] font-mono-sku text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/10 transition-colors">
+                        <Upload className="w-2.5 h-2.5" />
+                        <span>Upload Foto 1</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handlePriceModalFileUpload(e, 'primary')}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                        {modalImage ? (
+                          <img src={modalImage} alt="Foto 1" className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-600">Sem foto</span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={modalImage}
+                        onChange={(e) => setModalImage(e.target.value)}
+                        placeholder="https://exemplo.com/foto1.png"
+                        className="w-full bg-[#121113] border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono-sku focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-mono-sku text-emerald-300 block font-semibold">
+                        Foto 2 (Segunda Imagem / Ângulo 2)
+                      </label>
+                      <label className="text-[10px] font-mono-sku text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30 transition-colors">
+                        <Upload className="w-2.5 h-2.5" />
+                        <span>Upload Foto 2</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handlePriceModalFileUpload(e, 'secondary')}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-lg bg-black/60 border border-emerald-500/20 flex items-center justify-center overflow-hidden shrink-0">
+                        {modalSecondaryImage ? (
+                          <img src={modalSecondaryImage} alt="Foto 2" className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-600">Sem 2ª</span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={modalSecondaryImage}
+                        onChange={(e) => setModalSecondaryImage(e.target.value)}
+                        placeholder="URL da segunda imagem"
+                        className="w-full bg-[#121113] border border-emerald-500/40 rounded-xl px-2.5 py-1.5 text-xs text-emerald-300 font-mono-sku focus:outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Wholesale Price Field */}
                 <div className="bg-black/30 p-3.5 rounded-2xl border border-white/10">
@@ -1608,6 +1888,269 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                   <span>Salvar Preços Atualizados</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Dedicated Complete Product Edit Modal */}
+      {editModalProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-2xl bg-[#1c1b1c] border border-amber-400/40 rounded-3xl p-6 shadow-2xl text-white relative max-h-[92vh] overflow-y-auto">
+            <button
+              onClick={() => setEditModalProduct(null)}
+              className="absolute top-5 right-5 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
+              <SlidersHorizontal className="w-5 h-5 text-amber-400" />
+              <div>
+                <h3 className="font-syne font-bold text-lg text-white">Editar Modelo Completo & Fotos</h3>
+                <p className="text-xs text-zinc-400 font-jakarta">
+                  Altere a imagem principal, a <strong>segunda imagem</strong>, preços de atacado e dados cadastrais.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4 font-jakarta text-xs">
+              {/* Photo Previews & URL Inputs for Image 1 and Image 2 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Photo 1: Principal */}
+                <div className="bg-black/40 p-3.5 rounded-2xl border border-white/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono-sku text-[11px] text-amber-300 font-bold uppercase">
+                      Foto 1 (Principal)
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono-sku">Capa do Card</span>
+                  </div>
+                  <div className="w-full h-28 bg-[#121113] rounded-xl border border-white/10 flex items-center justify-center overflow-hidden p-2">
+                    {fullEditImage ? (
+                      <img
+                        src={fullEditImage}
+                        alt="Foto 1"
+                        className="w-full h-full object-contain filter drop-shadow"
+                      />
+                    ) : (
+                      <span className="text-zinc-600 text-xs font-mono-sku">Sem imagem</span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1">URL da Imagem:</label>
+                    <input
+                      type="text"
+                      value={fullEditImage}
+                      onChange={(e) => setFullEditImage(e.target.value)}
+                      placeholder="https://exemplo.com/foto1.png"
+                      className="w-full bg-[#141314] border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono-sku focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 cursor-pointer text-[11px] transition-colors">
+                    <Upload className="w-3 h-3 text-amber-400" />
+                    <span>Upload Foto 1</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFullEditFileUpload(e, 'primary')}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Photo 2: Segunda Imagem / Ângulo 2 */}
+                <div className="bg-black/40 p-3.5 rounded-2xl border border-emerald-500/20 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono-sku text-[11px] text-emerald-300 font-bold uppercase">
+                      Foto 2 (Segunda Imagem)
+                    </span>
+                    <span className="text-[10px] text-emerald-400/80 font-mono-sku">Ângulo / Detalhe</span>
+                  </div>
+                  <div className="w-full h-28 bg-[#121113] rounded-xl border border-white/10 flex items-center justify-center overflow-hidden p-2">
+                    {fullEditSecondaryImage ? (
+                      <img
+                        src={fullEditSecondaryImage}
+                        alt="Foto 2"
+                        className="w-full h-full object-contain filter drop-shadow"
+                      />
+                    ) : (
+                      <span className="text-zinc-600 text-xs font-mono-sku">Sem 2ª imagem</span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1">URL da Segunda Imagem:</label>
+                    <input
+                      type="text"
+                      value={fullEditSecondaryImage}
+                      onChange={(e) => setFullEditSecondaryImage(e.target.value)}
+                      placeholder="https://exemplo.com/foto2.png"
+                      className="w-full bg-[#141314] border border-emerald-500/30 rounded-xl px-2.5 py-1.5 text-xs text-emerald-300 font-mono-sku focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 cursor-pointer text-[11px] transition-colors">
+                    <Upload className="w-3 h-3 text-emerald-400" />
+                    <span>Upload Foto 2</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFullEditFileUpload(e, 'secondary')}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Basic Info: Name, SKU, Brand, Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Nome do Modelo</label>
+                  <input
+                    type="text"
+                    value={fullEditName}
+                    onChange={(e) => setFullEditName(e.target.value)}
+                    className="w-full bg-[#141314] border border-white/20 rounded-xl px-3 py-2 text-white font-syne font-bold text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Código SKU</label>
+                  <input
+                    type="text"
+                    value={fullEditSku}
+                    onChange={(e) => setFullEditSku(e.target.value)}
+                    className="w-full bg-[#141314] border border-white/20 rounded-xl px-3 py-2 text-white font-mono-sku font-bold text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Marca / Grife</label>
+                  <input
+                    type="text"
+                    value={fullEditBrand}
+                    onChange={(e) => setFullEditBrand(e.target.value)}
+                    className="w-full bg-[#141314] border border-white/20 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Categoria</label>
+                  <input
+                    type="text"
+                    value={fullEditCategory}
+                    onChange={(e) => setFullEditCategory(e.target.value)}
+                    className="w-full bg-[#141314] border border-white/20 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              {/* Pricing Grid */}
+              <div className="p-3.5 bg-black/40 rounded-2xl border border-white/10 space-y-3">
+                <span className="text-[10px] font-mono-sku text-amber-300 font-bold block uppercase">
+                  Valores de Comercialização (€)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono-sku text-amber-300 block mb-1 font-semibold">
+                      Atacado 10+ (€)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-amber-400 font-mono-sku font-bold">€</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={fullEditWholesale}
+                        onChange={(e) => setFullEditWholesale(e.target.value)}
+                        className="w-full bg-[#141314] border border-amber-400/50 rounded-xl pl-7 pr-2 py-1.5 text-xs text-amber-300 font-mono-sku font-bold focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">
+                      Varejo Sugerido (€)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-zinc-400 font-mono-sku font-bold">€</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="1"
+                        value={fullEditRetail}
+                        onChange={(e) => setFullEditRetail(e.target.value)}
+                        className="w-full bg-[#141314] border border-white/20 rounded-xl pl-7 pr-2 py-1.5 text-xs text-white font-mono-sku font-bold focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-mono-sku text-emerald-300 block font-semibold">
+                        Lote Volume (€)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setFullEditVolumeQty(fullEditVolumeQty === 50 ? 100 : 50)}
+                        className="text-[9px] font-mono-sku text-emerald-400 font-bold hover:underline"
+                      >
+                        +{fullEditVolumeQty} un
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-emerald-400 font-mono-sku font-bold">€</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={fullEditVolumePrice}
+                        onChange={(e) => setFullEditVolumePrice(e.target.value)}
+                        className="w-full bg-[#141314] border border-emerald-500/40 rounded-xl pl-7 pr-2 py-1.5 text-xs text-emerald-300 font-mono-sku font-bold focus:outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Badge & Description */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Selo / Badge</label>
+                  <input
+                    type="text"
+                    value={fullEditBadge}
+                    onChange={(e) => setFullEditBadge(e.target.value)}
+                    placeholder="Ex: GRADE DISPONÍVEL, HYPE, BEST-SELLER"
+                    className="w-full bg-[#141314] border border-white/20 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Descrição Rápida</label>
+                  <input
+                    type="text"
+                    value={fullEditDescription}
+                    onChange={(e) => setFullEditDescription(e.target.value)}
+                    placeholder="Detalhes dos materiais e acabamento..."
+                    className="w-full bg-[#141314] border border-white/20 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setEditModalProduct(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveFullEditModal}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all cursor-pointer"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Salvar Modelo Completo & Fotos</span>
+              </button>
             </div>
           </div>
         </div>

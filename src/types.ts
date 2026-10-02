@@ -12,6 +12,7 @@ export interface SneakerProduct {
   profitMarginPct: number;
   badge?: string;
   image: string;
+  secondaryImage?: string;
   description: string;
   materials?: string[];
   specs?: {

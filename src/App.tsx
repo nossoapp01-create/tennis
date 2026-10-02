@@ -103,13 +103,12 @@ export default function App() {
     });
 
     // Real-time synchronization listener for catalog updates
-    const handleSync = () => {
+    const handleSync = (e: Event) => {
       if (!isMounted) return;
-      loadProductsFromStorage().then((saved) => {
-        if (saved && saved.length > 0) {
-          setProducts(saved);
-        }
-      });
+      const ce = e as CustomEvent;
+      if (ce.detail?.products && Array.isArray(ce.detail.products) && ce.detail.products.length > 0) {
+        setProducts(ce.detail.products);
+      }
     };
     window.addEventListener('kicksluxe_catalog_sync', handleSync);
 
@@ -438,6 +437,34 @@ export default function App() {
   const handleDeleteProduct = (productId: string) => {
     setProducts((prev) => {
       const updated = prev.filter((p) => p.id !== productId);
+      saveProductsToStorage(updated);
+      return updated;
+    });
+  };
+
+  const handleUpdateProduct = (updatedProduct: SneakerProduct) => {
+    setProducts((prev) => {
+      const updated = prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
+      saveProductsToStorage(updated);
+      return updated;
+    });
+    if (detailProduct && detailProduct.id === updatedProduct.id) {
+      setDetailProduct(updatedProduct);
+    }
+  };
+
+  const handleBulkSetWholesalePriceAll = (wholesaleVal: number, retailVal?: number) => {
+    setProducts((prev) => {
+      const updated = prev.map((p) => {
+        const r = retailVal ?? (p.retailPrice > wholesaleVal ? p.retailPrice : Math.round(wholesaleVal * 1.8));
+        const margin = Math.round(((r - wholesaleVal) / wholesaleVal) * 100);
+        return {
+          ...p,
+          wholesalePrice: wholesaleVal,
+          retailPrice: r,
+          profitMarginPct: margin,
+        };
+      });
       saveProductsToStorage(updated);
       return updated;
     });
@@ -881,6 +908,7 @@ export default function App() {
         onClose={() => setDetailProduct(null)}
         onAddToCart={handleAddToCart}
         onUpdateProductPrices={handleUpdateProductPrices}
+        onUpdateProduct={handleUpdateProduct}
       />
 
       {/* B2B Cart & Order Manifest Drawer */}
@@ -908,6 +936,8 @@ export default function App() {
         onDeleteProduct={handleDeleteProduct}
         onBulkUpdateProducts={handleBulkUpdateProducts}
         onUpdateProductPrices={handleUpdateProductPrices}
+        onUpdateProduct={handleUpdateProduct}
+        onBulkSetWholesalePriceAll={handleBulkSetWholesalePriceAll}
         onImportCatalog={handleImportCatalog}
         aiStatus={aiStatus}
         onRefreshAIStatus={checkAIStatus}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Sparkles, Plus, Minus, ShoppingBag, Flame, Pencil, Check } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, Plus, Minus, ShoppingBag, Flame, Pencil, Check, Upload } from 'lucide-react';
 import { SneakerProduct, SizeQuantity } from '../types';
 import { formatCurrency } from '../utils/currency';
+import { compressUploadedImage } from '../utils/imageProcessor';
 
 interface ProductDetailModalProps {
   product: SneakerProduct | null;
@@ -15,6 +16,7 @@ interface ProductDetailModalProps {
     volumeWholesalePrice?: number,
     volumeWholesaleQty?: number
   ) => void;
+  onUpdateProduct?: (product: SneakerProduct) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -23,6 +25,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose,
   onAddToCart,
   onUpdateProductPrices,
+  onUpdateProduct,
 }) => {
   if (!product) return null;
 
@@ -42,14 +45,28 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const [activeTab, setActiveTab] = useState<'specs' | 'materials' | 'authenticity'>('specs');
   const [isZoomed, setIsZoomed] = useState(false);
+  const [activePhoto, setActivePhoto] = useState<'main' | 'secondary'>('main');
 
-  // Price editing state
+  // Price & Details editing state
   const [isEditingPrices, setIsEditingPrices] = useState(false);
+  const [editName, setEditName] = useState(product.name);
+  const [editImage, setEditImage] = useState(product.image);
+  const [editSecondaryImage, setEditSecondaryImage] = useState(product.secondaryImage || '');
   const [editWholesale, setEditWholesale] = useState(product.wholesalePrice.toString());
   const [editRetail, setEditRetail] = useState(product.retailPrice.toString());
   const [editVolumePrice, setEditVolumePrice] = useState((product.volumeWholesalePrice ?? 20).toString());
   const [editVolumeQty, setEditVolumeQty] = useState(product.volumeWholesaleQty ?? 50);
   const [priceSaveSuccess, setPriceSaveSuccess] = useState(false);
+
+  const handleDetailImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'primary' | 'secondary') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const compressed = await compressUploadedImage(file, 1000, 1000, 0.85);
+    if (compressed) {
+      if (field === 'primary') setEditImage(compressed);
+      else setEditSecondaryImage(compressed);
+    }
+  };
 
   const handleSaveDetailPrices = () => {
     const w = parseFloat(editWholesale.replace(',', '.'));
@@ -61,7 +78,23 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     }
 
     const validVolPrice = !isNaN(volP) && volP > 0 ? volP : 20;
+    const margin = Math.round(((r - w) / w) * 100);
 
+    const updatedProd: SneakerProduct = {
+      ...product,
+      name: editName.trim() || product.name,
+      image: editImage.trim() || product.image,
+      secondaryImage: editSecondaryImage.trim() || undefined,
+      wholesalePrice: w,
+      retailPrice: r,
+      volumeWholesalePrice: validVolPrice,
+      volumeWholesaleQty: editVolumeQty,
+      profitMarginPct: margin,
+    };
+
+    if (onUpdateProduct) {
+      onUpdateProduct(updatedProd);
+    }
     if (onUpdateProductPrices) {
       onUpdateProductPrices(product.id, w, r, validVolPrice, editVolumeQty);
     }
@@ -139,11 +172,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
           {/* Interactive Zoomable 3D Image Area */}
           <div
-            className="relative w-full my-6 flex items-center justify-center cursor-zoom-in group"
+            className="relative w-full my-4 flex items-center justify-center cursor-zoom-in group"
             onClick={() => setIsZoomed(!isZoomed)}
           >
             <img
-              src={product.image}
+              src={
+                activePhoto === 'secondary' && (product.secondaryImage || editSecondaryImage)
+                  ? (product.secondaryImage || editSecondaryImage)
+                  : (product.image || editImage)
+              }
               alt={product.name}
               referrerPolicy="no-referrer"
               className={`max-h-72 object-contain filter drop-shadow-[0_24px_40px_rgba(0,0,0,0.95)] transition-all duration-500 ${
@@ -153,6 +190,33 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="absolute bottom-1 right-2 text-[10px] font-mono-sku text-zinc-300 badge-3d-dark px-2.5 py-1 rounded shadow">
               {isZoomed ? 'Clique para reduzir' : 'Clique para zoom 3D'}
             </div>
+          </div>
+
+          {/* Photo Switcher: 1ª Foto (Principal) e 2ª Foto (Ângulo 2) */}
+          <div className="w-full flex items-center justify-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setActivePhoto('main')}
+              className={`px-3 py-1 rounded-xl text-[10px] font-mono-sku font-bold transition-all cursor-pointer ${
+                activePhoto === 'main'
+                  ? 'bg-amber-400 text-black shadow-md'
+                  : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10'
+              }`}
+            >
+              Foto 1 (Principal)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePhoto('secondary')}
+              className={`px-3 py-1 rounded-xl text-[10px] font-mono-sku font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                activePhoto === 'secondary'
+                  ? 'bg-amber-400 text-black shadow-md'
+                  : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10'
+              }`}
+            >
+              <span>Foto 2 (Ângulo 2)</span>
+              {product.secondaryImage && <span className="text-[9px] text-emerald-400 font-bold">●</span>}
+            </button>
           </div>
 
           {/* Key Quick Highlights with 3D Bevel */}
@@ -245,13 +309,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
               </div>
 
-              {/* Price Edit Section */}
-              {onUpdateProductPrices && (
+              {/* Price & Details Edit Section */}
+              {(onUpdateProductPrices || onUpdateProduct) && (
                 <div className="mt-3 pt-2.5 border-t border-white/5">
                   {!isEditingPrices ? (
                     <button
                       type="button"
                       onClick={() => {
+                        setEditName(product.name);
+                        setEditImage(product.image);
+                        setEditSecondaryImage(product.secondaryImage || '');
                         setEditWholesale(product.wholesalePrice.toString());
                         setEditRetail(product.retailPrice.toString());
                         setEditVolumePrice((product.volumeWholesalePrice ?? 20).toString());
@@ -262,14 +329,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       className="inline-flex items-center gap-1.5 text-[11px] font-syne font-bold text-amber-400 hover:text-amber-300 transition-colors py-1 px-2 rounded-lg hover:bg-amber-400/10 cursor-pointer"
                     >
                       <Pencil className="w-3 h-3 text-amber-400" />
-                      <span>Editar Valores (Varejo, Atacado 10+ e Lote +50/100)</span>
+                      <span>Editar Valores e Fotos deste Modelo</span>
                     </button>
                   ) : (
                     <div className="p-3.5 mt-2 rounded-2xl bg-black/60 border border-amber-400/40 space-y-3">
                       <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
                         <span className="text-[11px] font-syne font-bold text-amber-300 flex items-center gap-1.5">
                           <Pencil className="w-3.5 h-3.5 text-amber-400" />
-                          Editar Preços deste Modelo
+                          Editar Dados, Fotos e Preços deste Modelo
                         </span>
                         <button
                           type="button"
@@ -278,6 +345,90 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         >
                           <X className="w-4 h-4" />
                         </button>
+                      </div>
+
+                      {/* Name Field */}
+                      <div>
+                        <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">
+                          Nome do Modelo
+                        </label>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full bg-[#181719] border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-white font-syne font-bold focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+
+                      {/* Image URLs & Upload: 1st and 2nd Image */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-mono-sku text-amber-300 block font-semibold">
+                              Foto 1 (Principal)
+                            </label>
+                            <label className="text-[10px] font-mono-sku text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/10 transition-colors">
+                              <Upload className="w-2.5 h-2.5" />
+                              <span>Upload Foto 1</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleDetailImageUpload(e, 'primary')}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                              {editImage ? (
+                                <img src={editImage} alt="Foto 1" className="w-full h-full object-contain" />
+                              ) : (
+                                <span className="text-[9px] text-zinc-600">Sem foto</span>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              value={editImage}
+                              onChange={(e) => setEditImage(e.target.value)}
+                              placeholder="https://exemplo.com/foto1.png"
+                              className="w-full bg-[#181719] border border-amber-400/40 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono-sku focus:outline-none focus:border-amber-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-mono-sku text-emerald-300 block font-semibold">
+                              Foto 2 (Segunda Imagem / Ângulo 2)
+                            </label>
+                            <label className="text-[10px] font-mono-sku text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30 transition-colors">
+                              <Upload className="w-2.5 h-2.5" />
+                              <span>Upload Foto 2</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleDetailImageUpload(e, 'secondary')}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-lg bg-black/60 border border-emerald-500/20 flex items-center justify-center overflow-hidden shrink-0">
+                              {editSecondaryImage ? (
+                                <img src={editSecondaryImage} alt="Foto 2" className="w-full h-full object-contain" />
+                              ) : (
+                                <span className="text-[9px] text-zinc-600">Sem 2ª</span>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              value={editSecondaryImage}
+                              onChange={(e) => setEditSecondaryImage(e.target.value)}
+                              placeholder="https://exemplo.com/foto2.png"
+                              className="w-full bg-[#181719] border border-emerald-400/40 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono-sku focus:outline-none focus:border-emerald-400"
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">

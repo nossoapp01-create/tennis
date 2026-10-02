@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, ArrowRight, ShieldCheck, TrendingUp, Flame } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, ArrowRight, ShieldCheck, TrendingUp, Flame, Pencil, X, Check, Upload } from 'lucide-react';
+import { loadSlidesFromStorage, saveSlidesToStorage } from '../services/storage';
+import { compressUploadedImage } from '../utils/imageProcessor';
 
-interface Slide {
+export interface Slide {
   id: string;
   tag: string;
   headline: string;
@@ -15,7 +17,7 @@ interface Slide {
   accentColor: string;
 }
 
-const SLIDES: Slide[] = [
+export const INITIAL_SLIDES: Slide[] = [
   {
     id: 'slide-1',
     tag: 'DROP 01 // SYNDICATE EXCLUSIVE',
@@ -63,16 +65,74 @@ interface HeroCarouselProps {
 }
 
 export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExploreCatalog }) => {
+  const [slides, setSlides] = useState<Slide[]>(() => {
+    return loadSlidesFromStorage() || INITIAL_SLIDES;
+  });
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Slide editor modal state
+  const [isEditingSlides, setIsEditingSlides] = useState(false);
+  const [editSlidesList, setEditSlidesList] = useState<Slide[]>(slides);
+  const [activeEditIndex, setActiveEditIndex] = useState(1); // Default to Slide 2 ("segunda imagem do site")
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 7000);
     return () => clearInterval(timer);
+  }, [slides.length]);
+
+  // Sync listener if slides updated from another component
+  useEffect(() => {
+    const handleSync = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce.detail?.slides) {
+        setSlides(ce.detail.slides);
+      }
+    };
+    window.addEventListener('kicksluxe_slides_sync', handleSync);
+    return () => window.removeEventListener('kicksluxe_slides_sync', handleSync);
   }, []);
 
-  const slide = SLIDES[currentSlide];
+  const slide = slides[currentSlide] || slides[0] || INITIAL_SLIDES[0];
+
+  const handleOpenEditor = (targetIdx = currentSlide) => {
+    setEditSlidesList([...slides]);
+    setActiveEditIndex(targetIdx);
+    setIsEditingSlides(true);
+    setSaveSuccess(false);
+  };
+
+  const handleSaveSlides = () => {
+    setSlides(editSlidesList);
+    saveSlidesToStorage(editSlidesList);
+    setSaveSuccess(true);
+    setTimeout(() => {
+      setSaveSuccess(false);
+      setIsEditingSlides(false);
+    }, 1200);
+  };
+
+  const handleResetSlides = () => {
+    setEditSlidesList(INITIAL_SLIDES);
+    setSlides(INITIAL_SLIDES);
+    saveSlidesToStorage(INITIAL_SLIDES);
+    setIsEditingSlides(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, slideIdx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const compressed = await compressUploadedImage(file, 1200, 800, 0.85);
+    if (compressed) {
+      setEditSlidesList((prev) => {
+        const updated = [...prev];
+        updated[slideIdx] = { ...updated[slideIdx], image: compressed };
+        return updated;
+      });
+    }
+  };
 
   return (
     <div className="hero-carousel-container relative w-full overflow-hidden bg-[#101011] border-b border-white/10 perspective-1000 transition-colors duration-300">
@@ -181,7 +241,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
         {/* Carousel Indicators & Controls */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
           <div className="flex items-center gap-2">
-            {SLIDES.map((s, idx) => (
+            {slides.map((s, idx) => (
               <button
                 key={s.id}
                 onClick={() => setCurrentSlide(idx)}
@@ -197,14 +257,23 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setCurrentSlide((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)}
+              onClick={() => handleOpenEditor(currentSlide)}
+              className="px-2.5 py-1 rounded-full badge-3d-dark hover:border-amber-400/50 text-[11px] font-mono-sku text-amber-300 flex items-center gap-1 transition-all active:scale-95 cursor-pointer mr-1"
+              title="Editar imagens e fotos dos banners do site"
+            >
+              <Pencil className="w-3 h-3 text-amber-400" />
+              <span>Editar Banners</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
               className="w-7 h-7 rounded-full badge-3d-dark hover:border-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer"
               aria-label="Slide anterior"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => setCurrentSlide((prev) => (prev + 1) % SLIDES.length)}
+              onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
               className="w-7 h-7 rounded-full badge-3d-dark hover:border-white/30 flex items-center justify-center text-white transition-all active:scale-95 cursor-pointer"
               aria-label="Próximo slide"
             >
@@ -213,6 +282,223 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ onOpenAdmin, onExplo
           </div>
         </div>
       </div>
+
+      {/* Hero Slides Editor Modal */}
+      {isEditingSlides && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-2xl bg-[#1c1b1c] border border-amber-400/30 rounded-3xl p-6 shadow-2xl text-white relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsEditingSlides(false)}
+              className="absolute top-5 right-5 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 pb-3 border-b border-white/10">
+              <Pencil className="w-5 h-5 text-amber-400" />
+              <div>
+                <h3 className="font-syne font-bold text-lg text-white">Editar Imagens e Textos dos Banners</h3>
+                <p className="text-xs text-zinc-400 font-jakarta">
+                  Altere a imagem principal, a <strong>segunda imagem que mostra no site</strong> ou qualquer slide do carrossel.
+                </p>
+              </div>
+            </div>
+
+            {/* Slide Selector Tabs */}
+            <div className="flex items-center gap-2 mt-4 pb-2 border-b border-white/10">
+              {editSlidesList.map((s, idx) => (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveEditIndex(idx)}
+                  className={`px-3 py-1.5 rounded-xl font-mono-sku text-xs font-bold transition-all cursor-pointer ${
+                    activeEditIndex === idx
+                      ? 'bg-amber-400 text-black shadow-md'
+                      : 'bg-white/5 hover:bg-white/10 text-zinc-300'
+                  }`}
+                >
+                  Slide {idx + 1} {idx === 1 ? '(2ª Imagem do Site)' : ''}
+                </button>
+              ))}
+            </div>
+
+            {/* Active Slide Form */}
+            {editSlidesList[activeEditIndex] && (
+              <div className="mt-4 space-y-4 font-jakarta text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                  <div className="sm:col-span-1">
+                    <span className="text-[10px] font-mono-sku text-zinc-400 block mb-1">Preview Atual:</span>
+                    <div className="w-full h-32 rounded-xl bg-black/60 border border-white/10 overflow-hidden flex items-center justify-center p-2">
+                      <img
+                        src={editSlidesList[activeEditIndex].image}
+                        alt="Slide Preview"
+                        className="w-full h-full object-contain filter drop-shadow"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-2">
+                    <div>
+                      <label className="text-[10px] font-mono-sku text-amber-300 block mb-1 font-semibold">
+                        URL da Imagem do Slide {activeEditIndex + 1} {activeEditIndex === 1 ? '(Segunda Imagem)' : ''}:
+                      </label>
+                      <input
+                        type="text"
+                        value={editSlidesList[activeEditIndex].image}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditSlidesList((prev) => {
+                            const updated = [...prev];
+                            updated[activeEditIndex] = { ...updated[activeEditIndex], image: val };
+                            return updated;
+                          });
+                        }}
+                        placeholder="https://exemplo.com/imagem.png"
+                        className="w-full bg-[#121113] border border-amber-400/40 rounded-xl px-3 py-2 text-white font-mono-sku text-xs focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-300 cursor-pointer transition-colors text-[11px]">
+                        <Upload className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Carregar do Computador</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileUpload(e, activeEditIndex)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Tag do Topo</label>
+                    <input
+                      type="text"
+                      value={editSlidesList[activeEditIndex].tag}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditSlidesList((prev) => {
+                          const updated = [...prev];
+                          updated[activeEditIndex] = { ...updated[activeEditIndex], tag: val };
+                          return updated;
+                        });
+                      }}
+                      className="w-full bg-[#121113] border border-white/15 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Destaque Métrico</label>
+                    <input
+                      type="text"
+                      value={editSlidesList[activeEditIndex].statNumber}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditSlidesList((prev) => {
+                          const updated = [...prev];
+                          updated[activeEditIndex] = { ...updated[activeEditIndex], statNumber: val };
+                          return updated;
+                        });
+                      }}
+                      className="w-full bg-[#121113] border border-white/15 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Título Principal</label>
+                  <input
+                    type="text"
+                    value={editSlidesList[activeEditIndex].headline}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditSlidesList((prev) => {
+                        const updated = [...prev];
+                        updated[activeEditIndex] = { ...updated[activeEditIndex], headline: val };
+                        return updated;
+                      });
+                    }}
+                    className="w-full bg-[#121113] border border-white/15 rounded-xl px-3 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Subtítulo</label>
+                  <input
+                    type="text"
+                    value={editSlidesList[activeEditIndex].subheadline}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditSlidesList((prev) => {
+                        const updated = [...prev];
+                        updated[activeEditIndex] = { ...updated[activeEditIndex], subheadline: val };
+                        return updated;
+                      });
+                    }}
+                    className="w-full bg-[#121113] border border-white/15 rounded-xl px-3 py-2 text-amber-300 text-xs font-semibold focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono-sku text-zinc-300 block mb-1 font-semibold">Descrição</label>
+                  <textarea
+                    rows={2}
+                    value={editSlidesList[activeEditIndex].description}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditSlidesList((prev) => {
+                        const updated = [...prev];
+                        updated[activeEditIndex] = { ...updated[activeEditIndex], description: val };
+                        return updated;
+                      });
+                    }}
+                    className="w-full bg-[#121113] border border-white/15 rounded-xl px-3 py-2 text-zinc-300 text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleResetSlides}
+                className="px-3 py-2 text-xs font-mono-sku text-zinc-400 hover:text-red-400 transition-colors"
+              >
+                Restaurar Padrão
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingSlides(false)}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 text-xs font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveSlides}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
+                >
+                  {saveSuccess ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Salvo com Sucesso!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Salvar Alterações do Banner</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
