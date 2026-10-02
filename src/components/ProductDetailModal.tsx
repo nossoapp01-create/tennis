@@ -273,24 +273,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       </span>
                     </>
                   ) : (
-                    <>
+                    <div className="flex items-center gap-4 bg-[#141416] px-4 py-3 rounded-2xl border border-amber-400/30 shadow-[0_4px_20px_rgba(245,158,11,0.12)]">
                       <div>
-                        <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase font-semibold">CONSUMIDOR FINAL</span>
-                        <span className="text-2xl font-jakarta font-extrabold text-white tracking-tight tabular-nums">
-                          {formatCurrency(product.retailPrice || 45)}
+                        <span className="text-xs font-mono-sku text-zinc-400 block uppercase font-bold tracking-wider">
+                          CONSUMIDOR FINAL
                         </span>
+                        <div className="flex items-baseline gap-2 mt-0.5">
+                          <span className="text-3xl sm:text-4xl font-syne font-black text-amber-300 tracking-tight tabular-nums drop-shadow-md">
+                            {formatCurrency(product.retailPrice || 45)}
+                          </span>
+                          <span className="text-xs font-mono-sku text-zinc-400 font-semibold">/ par</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[11px] font-mono-sku text-emerald-400 block uppercase font-semibold">À VISTA (PIX / TED)</span>
-                        <span className="text-xl font-jakarta font-extrabold text-emerald-300 tabular-nums">
-                          {formatCurrency(Math.round(((product.retailPrice || 45) * 0.95) * 100) / 100)}
-                        </span>
-                        <span className="text-[10px] text-emerald-400/80 font-mono-sku block font-bold">5% de Desconto</span>
-                      </div>
-                      <span className="text-xs font-mono-sku font-bold px-2.5 py-1 rounded badge-3d-dark text-amber-300">
-                        3x de {formatCurrency(Math.round(((product.retailPrice || 45) / 3) * 100) / 100)} s/ juros
+                      <span className="ml-auto px-3.5 py-1.5 rounded-full badge-3d-gold text-black font-syne font-extrabold text-xs shadow-md">
+                        Preço Oficial
                       </span>
-                    </>
+                    </div>
                   )}
                 </div>
 

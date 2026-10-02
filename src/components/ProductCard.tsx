@@ -63,8 +63,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     setTimeout(() => setIsAddedRecently(false), 1800);
   };
 
-  const formattedRetailPrice = formatCurrency(product.retailPrice);
-  const formattedWholesalePrice = formatCurrency(product.wholesalePrice);
+  const formattedRetailPrice = formatCurrency(product.retailPrice || 45);
+  const formattedWholesalePrice = formatCurrency(product.wholesalePrice || 25);
 
   const isHighPriority =
     product.badge?.includes('BEST-SELLER') ||
@@ -207,7 +207,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Pricing Area: Varejo vs Atacado */}
-        <div className="bg-[#181719] px-2.5 py-2 rounded-lg border border-white/10 shadow-inner">
+        <div className={`px-2.5 py-2 rounded-lg border shadow-inner transition-colors ${
+          mode === 'varejo'
+            ? 'bg-[#141315] border-amber-400/30 shadow-[inset_0_1px_3px_rgba(0,0,0,0.7)]'
+            : 'bg-[#181719] border-white/10'
+        }`}>
           {mode === 'atacado' ? (
             <div>
               <div className="flex items-baseline justify-between">
@@ -235,26 +239,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </div>
             </div>
           ) : (
-            <div>
-              {/* Main Final Consumer Price */}
-              <div className="flex items-baseline justify-between">
-                <span className="text-[10px] font-mono-sku text-zinc-300 font-bold uppercase tracking-wider">
-                  Consumidor Final:
-                </span>
-                <span className="text-base sm:text-lg font-jakarta font-extrabold text-white tracking-tight tabular-nums">
-                  {formattedRetailPrice}
-                </span>
-              </div>
-
-              {/* Installment breakdown & 5% Cash Discount */}
-              <div className="flex items-center justify-between text-[10px] text-zinc-400 mt-1 pt-1 border-t border-white/5 font-jakarta">
-                <span className="text-zinc-300">
-                  ou <strong>3x de {formatCurrency(Math.round(((product.retailPrice || 45) / 3) * 100) / 100)}</strong> s/ juros
-                </span>
-                <span className="text-emerald-400 font-mono-sku font-bold">
-                  {formatCurrency(Math.round(((product.retailPrice || 45) * 0.95) * 100) / 100)} à vista (-5%)
-                </span>
-              </div>
+            <div className="flex items-center justify-between py-1 px-0.5">
+              <span className="text-[11px] font-mono-sku text-zinc-300 font-bold uppercase tracking-wider">
+                Consumidor Final:
+              </span>
+              <span className="text-xl sm:text-2xl font-syne font-black text-amber-300 tracking-tight tabular-nums drop-shadow-md">
+                {formattedRetailPrice}
+              </span>
             </div>
           )}
         </div>
