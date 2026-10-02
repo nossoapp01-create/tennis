@@ -40,8 +40,13 @@ import {
 import { formatCurrency } from './utils/currency';
 
 export default function App() {
-  // Mode: Varejo vs Atacado (10+ un)
-  const [mode, setMode] = useState<'varejo' | 'atacado'>('atacado');
+  // Mode: Varejo vs Atacado (10+ un) - Always defaults to Varejo Prime
+  const [mode, setMode] = useState<'varejo' | 'atacado'>('varejo');
+
+  // Guarantee application always opens on Varejo Prime mode
+  useEffect(() => {
+    setMode('varejo');
+  }, []);
 
   // Products state (persisted or preloaded)
   const [products, setProducts] = useState<SneakerProduct[]>(() => {
@@ -634,7 +639,7 @@ export default function App() {
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-syne font-extrabold text-white tracking-tight mt-1 text-3d-white">
               {mode === 'atacado'
                 ? 'Grade Fechada & Lotes para Revenda de Luxo'
-                : 'Catálogo de Sneakers Exclusivos no Varejo'}
+                : 'Catálogo Varejo Prime // Consumidor Final'}
             </h2>
             <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-2xl font-jakarta">
               {mode === 'atacado'
@@ -685,37 +690,15 @@ export default function App() {
           {/* Retail Mode Tier Summary Pill */}
           {mode === 'varejo' && (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="badge-3d-dark highlight-glow-ribbon rounded-2xl p-3.5 flex items-center gap-4 text-xs font-mono-sku shadow-xl">
+              <div className="badge-3d-dark highlight-glow-ribbon rounded-2xl p-3.5 flex items-center gap-3 text-xs font-mono-sku shadow-xl">
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="w-4 h-4 text-amber-400 animate-pulse" />
                   <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">PREÇO VAREJO</span>
-                    <span className="text-white font-bold text-3d-subtle">
-                      {catalogPricingSummary.isUniformRetail
-                        ? formatCurrency(catalogPricingSummary.minRetail)
-                        : `A partir de ${formatCurrency(catalogPricingSummary.minRetail)}`}
-                      {' '}/ par
+                    <span className="text-zinc-400 block text-[10px] uppercase font-bold tracking-wider">PREÇO CONSUMIDOR FINAL</span>
+                    <span className="text-white font-extrabold text-base text-3d-subtle">
+                      {formatCurrency(catalogPricingSummary.minRetail)} <span className="text-xs text-zinc-400 font-normal">/ par</span>
                     </span>
                   </div>
-                </div>
-                <div className="h-7 w-px bg-white/10"></div>
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-amber-400" />
-                  <div>
-                    <span className="text-amber-400 block text-[10px] uppercase font-bold">
-                      PARCELAMENTO
-                    </span>
-                    <span className="text-amber-300 font-extrabold text-3d-subtle">
-                      3x de {formatCurrency(Math.round((catalogPricingSummary.minRetail / 3) * 100) / 100)} s/ juros
-                    </span>
-                  </div>
-                </div>
-                <div className="h-7 w-px bg-white/10"></div>
-                <div>
-                  <span className="text-zinc-400 block text-[10px] uppercase">À VISTA (PIX / TED)</span>
-                  <span className="text-emerald-400 font-extrabold text-3d-subtle">
-                    {formatCurrency(Math.round((catalogPricingSummary.minRetail * 0.95) * 100) / 100)} (5% OFF)
-                  </span>
                 </div>
               </div>
             </div>
@@ -752,41 +735,6 @@ export default function App() {
               >
                 <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
                 <span>Ver Manifesto ({cartPairsCount} pares)</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Retail Mode Value & Wholesale Switcher Banner */}
-        {mode === 'varejo' && (
-          <div className="mb-6 bg-gradient-to-r from-amber-950/50 via-[#1f1a14] to-yellow-950/40 border border-amber-500/40 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center flex-shrink-0 shadow-inner">
-                <TrendingUp className="w-5 h-5 text-amber-400 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-syne font-extrabold text-sm text-white">
-                    Valores Especiais no Varejo: Pares a {catalogPricingSummary.isUniformRetail ? formatCurrency(catalogPricingSummary.minRetail) : `a partir de ${formatCurrency(catalogPricingSummary.minRetail)}`} em até 3x sem juros ou 5% OFF à vista!
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-mono-sku font-black text-[10px] tracking-wide">
-                    ENVIO EXPRESSO 24H
-                  </span>
-                </div>
-                <p className="text-xs text-amber-200/80 font-jakarta mt-1">
-                  Pares autênticos com laudo pericial 1:1 e entrega blindada. Para pedidos a partir de <strong>10 pares sortidos</strong> (revenda e boutiques), mude para a modalidade <strong>Atacado</strong> e compre por <strong>{catalogPricingSummary.isUniformWholesale ? formatCurrency(catalogPricingSummary.minWholesale) : `a partir de ${formatCurrency(catalogPricingSummary.minWholesale)}`} / par</strong> com margem de até <strong>+{catalogPricingSummary.marginVolume}%</strong>!
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setMode('atacado')}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-extrabold text-xs flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
-              >
-                <TrendingUp className="w-4 h-4 stroke-[2.5]" />
-                <span>Ver Preços de Atacado ({catalogPricingSummary.isUniformWholesale ? formatCurrency(catalogPricingSummary.minWholesale) : `a partir de ${formatCurrency(catalogPricingSummary.minWholesale)}`})</span>
               </button>
             </div>
           </div>

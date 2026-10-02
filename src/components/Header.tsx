@@ -207,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span className={`w-1.5 h-1.5 rounded-full ${
                 mode === 'varejo' ? 'bg-zinc-950' : 'bg-zinc-400'
               }`} />
-              <span>Varejo</span>
+              <span>Varejo Prime</span>
             </button>
             <button
               onClick={() => onToggleMode('atacado')}

@@ -275,50 +275,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   ) : (
                     <>
                       <div>
-                        <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase font-semibold">PREÇO VAREJO</span>
+                        <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase font-semibold">CONSUMIDOR FINAL</span>
                         <span className="text-2xl font-jakarta font-extrabold text-white tracking-tight tabular-nums">
-                          {formattedRetailPrice}
+                          {formatCurrency(product.retailPrice || 45)}
                         </span>
                       </div>
                       <div>
                         <span className="text-[11px] font-mono-sku text-emerald-400 block uppercase font-semibold">À VISTA (PIX / TED)</span>
                         <span className="text-xl font-jakarta font-extrabold text-emerald-300 tabular-nums">
-                          {formatCurrency(Math.round((product.retailPrice * 0.95) * 100) / 100)}
+                          {formatCurrency(Math.round(((product.retailPrice || 45) * 0.95) * 100) / 100)}
                         </span>
                         <span className="text-[10px] text-emerald-400/80 font-mono-sku block font-bold">5% de Desconto</span>
                       </div>
                       <span className="text-xs font-mono-sku font-bold px-2.5 py-1 rounded badge-3d-dark text-amber-300">
-                        3x de {formatCurrency(Math.round((product.retailPrice / 3) * 100) / 100)} s/ juros
+                        3x de {formatCurrency(Math.round(((product.retailPrice || 45) / 3) * 100) / 100)} s/ juros
                       </span>
                     </>
                   )}
                 </div>
-
-                {mode === 'varejo' && (
-                  <div className="bg-gradient-to-r from-amber-500/15 via-[#211d17] to-yellow-500/10 p-2.5 rounded-xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 flex-shrink-0">
-                        <TrendingUp className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-syne font-extrabold text-white">
-                            Condição para Lojistas e Revenda (B2B):
-                          </span>
-                          <span className="text-sm font-mono-sku font-black text-amber-300 tabular-nums">
-                            {formattedWholesalePrice} / par (10+ un)
-                          </span>
-                        </div>
-                        <p className="text-[10px] font-mono-sku text-amber-300/80">
-                          Economia de <strong>{formatCurrency(product.retailPrice - product.wholesalePrice)} por par</strong> comprando no atacado a partir de 10 unidades sortidas!
-                        </p>
-                      </div>
-                    </div>
-                    <span className="self-start sm:self-center px-2 py-0.5 rounded bg-amber-400 text-black font-mono-sku font-extrabold text-[10px] tracking-wide whitespace-nowrap shadow-sm">
-                      OPÇÃO ATACADO
-                    </span>
-                  </div>
-                )}
 
                 {mode === 'atacado' && (
                   <div className="bg-gradient-to-r from-emerald-500/15 via-[#18261e] to-teal-500/10 p-2.5 rounded-xl border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
