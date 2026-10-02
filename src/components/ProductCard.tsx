@@ -235,13 +235,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </div>
             </div>
           ) : (
-            <div className="flex items-baseline justify-between">
-              <span className="text-[10px] font-mono-sku text-zinc-400 uppercase tracking-wider">
-                Preço Varejo:
-              </span>
-              <span className="text-base sm:text-lg font-jakarta font-bold text-white tracking-tight tabular-nums">
-                {formattedRetailPrice}
-              </span>
+            <div>
+              {/* Main Retail Price & Cash Discount */}
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] font-mono-sku text-zinc-300 font-bold uppercase tracking-wider">
+                  Preço Varejo:
+                </span>
+                <span className="text-base sm:text-lg font-jakarta font-extrabold text-white tracking-tight tabular-nums">
+                  {formattedRetailPrice}
+                </span>
+              </div>
+
+              {/* Installment breakdown & 5% Cash Discount */}
+              <div className="flex items-center justify-between text-[10px] text-zinc-400 mt-1 pt-1 border-t border-white/5 font-jakarta">
+                <span className="text-zinc-300">
+                  ou <strong>3x de {formatCurrency(Math.round((product.retailPrice / 3) * 100) / 100)}</strong> s/ juros
+                </span>
+                <span className="text-emerald-400 font-mono-sku font-bold">
+                  {formatCurrency(Math.round((product.retailPrice * 0.95) * 100) / 100)} à vista (-5%)
+                </span>
+              </div>
+
+              {/* Wholesale Comparison Benefit */}
+              <div className="flex items-center justify-between text-[10px] mt-1 pt-1 border-t border-white/5 font-mono-sku">
+                <span className="text-amber-400 font-semibold flex items-center gap-1">
+                  <span className="text-zinc-400">Atacado 10+:</span>
+                  <strong className="text-amber-300">{formattedWholesalePrice}</strong>
+                </span>
+                <span className="text-emerald-400 font-extrabold text-[10px]">
+                  Economia de {formatCurrency(product.retailPrice - product.wholesalePrice)}/par
+                </span>
+              </div>
             </div>
           )}
         </div>
