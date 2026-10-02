@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Sparkles, SlidersHorizontal, Search, Store, Layers, Sun, Moon } from 'lucide-react';
+import { ShieldCheck, Sparkles, SlidersHorizontal, Search, Store, Layers, Sun, Moon, Lock, LogOut } from 'lucide-react';
 import { AIModelStatus } from '../types';
 
 interface HeaderProps {
@@ -8,6 +8,10 @@ interface HeaderProps {
   cartCount?: number;
   onOpenCart?: () => void;
   onOpenAdmin: () => void;
+  isAdminLoggedIn?: boolean;
+  onOpenAdminLogin?: () => void;
+  onAdminLogout?: () => void;
+  adminEmail?: string;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   aiStatus: AIModelStatus;
@@ -23,6 +27,10 @@ export const Header: React.FC<HeaderProps> = ({
   cartCount,
   onOpenCart,
   onOpenAdmin,
+  isAdminLoggedIn = false,
+  onOpenAdminLogin,
+  onAdminLogout,
+  adminEmail,
   searchQuery,
   onSearchChange,
   aiStatus,
@@ -154,25 +162,49 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Super Admin Modal Trigger with Highlight Shimmer */}
-          <button
-            onClick={onOpenAdmin}
-            className="relative px-3.5 py-1.5 rounded-full badge-3d-dark hover:border-amber-400/40 text-xs font-bold text-amber-300 flex items-center gap-2 transition-all highlight-shimmer shadow-lg active:scale-95"
-            title="Acessar painel do Super Admin com Extrator IA e Gestão de Lojas"
-          >
-            <div className="relative">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span
-                className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
-                  aiStatus.geminiConnected || aiStatus.deepseekConnected
-                    ? 'bg-emerald-400'
-                    : 'bg-amber-400 animate-ping'
-                }`}
-              ></span>
+          {/* Super Admin Modal Trigger - ONLY visible when admin is logged in with nossoapp01@gmail.com */}
+          {isAdminLoggedIn ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={onOpenAdmin}
+                className="relative px-3.5 py-1.5 rounded-full badge-3d-dark hover:border-amber-400/40 text-xs font-bold text-amber-300 flex items-center gap-2 transition-all highlight-shimmer shadow-lg active:scale-95 cursor-pointer"
+                title={`Super Admin Conectado (${adminEmail || 'nossoapp01@gmail.com'}) - Acessar painel do Vault`}
+              >
+                <div className="relative">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span
+                    className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
+                      aiStatus.geminiConnected || aiStatus.deepseekConnected
+                        ? 'bg-emerald-400'
+                        : 'bg-amber-400 animate-ping'
+                    }`}
+                  ></span>
+                </div>
+                <span className="hidden sm:inline font-syne tracking-wide text-3d-subtle">SUPER ADMIN IA</span>
+                <span className="sm:hidden font-syne">ADMIN</span>
+              </button>
+
+              {onAdminLogout && (
+                <button
+                  type="button"
+                  onClick={onAdminLogout}
+                  className="p-1.5 rounded-full badge-3d-dark hover:border-red-500/40 hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-all text-xs cursor-pointer"
+                  title="Desconectar do Super Admin (Logout)"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            <span className="hidden sm:inline font-syne tracking-wide text-3d-subtle">SUPER ADMIN IA</span>
-            <span className="sm:hidden font-syne">ADMIN</span>
-          </button>
+          ) : (
+            <button
+              onClick={onOpenAdminLogin || onOpenAdmin}
+              className="p-2 rounded-full badge-3d-dark hover:border-amber-400/30 text-zinc-400 hover:text-amber-300 transition-all flex items-center gap-1 text-xs font-mono-sku cursor-pointer"
+              title="Acesso Restrito Admin (nossoapp01@gmail.com)"
+            >
+              <Lock className="w-3.5 h-3.5 text-zinc-400 hover:text-amber-400" />
+              <span className="hidden xl:inline text-[10px]">Admin</span>
+            </button>
+          )}
         </div>
       </div>
 
