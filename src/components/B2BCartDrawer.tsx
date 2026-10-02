@@ -51,6 +51,9 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
     ? (cart[0].product.volumeWholesaleQty || 50)
     : 50;
 
+  const sampleWholesalePrice = cart.length > 0 ? (cart[0].product.wholesalePrice || 25) : 25;
+  const sampleVolumePrice = cart.length > 0 ? (cart[0].product.volumeWholesalePrice ?? 20) : 20;
+
   // Helper to determine the unit price of an item given the total assorted pairs in cart
   const getItemUnitPrice = (item: CartItem): number => {
     if (mode === 'varejo') {
@@ -77,12 +80,15 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
     return acc + pairsCount * unitPrice;
   }, 0);
 
+  // Format currency helper in Euros
+  const fmt = (val: number) => formatCurrency(val);
+
   // Wholesale tiered discount status badge
   let tierBadge = 'Abaixo do Mínimo de Atacado';
   if (totalPairs >= primaryVolumeQty) {
-    tierBadge = `Mega Lote ${primaryVolumeQty}+ Sortidos Ativado (€ 20/par)`;
+    tierBadge = `Mega Lote ${primaryVolumeQty}+ Sortidos Ativado (${fmt(sampleVolumePrice)}/par)`;
   } else if (totalPairs >= 10) {
-    tierBadge = `Atacado Padrão 10+ Ativado (€ 25/par)`;
+    tierBadge = `Atacado Padrão 10+ Ativado (${fmt(sampleWholesalePrice)}/par)`;
   } else {
     tierBadge = `Faltam ${Math.max(0, 10 - totalPairs)} pares para ativar atacado`;
   }
@@ -93,9 +99,6 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
       : totalRetailValue;
 
   const estimatedProfit = totalRetailValue - effectiveTotal;
-
-  // Format currency helper in Euros
-  const fmt = (val: number) => formatCurrency(val);
 
   // Export CSV Manifest
   const handleExportCSV = () => {
@@ -241,14 +244,14 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
 
             <div className="flex justify-between text-[10px] font-mono-sku mt-1.5 text-zinc-400">
               <span className={totalPairs >= 10 ? 'text-amber-300 font-bold' : 'text-zinc-500'}>
-                10 pares (Atacado €25)
+                10 pares (Atacado {fmt(sampleWholesalePrice)})
               </span>
               <span
                 className={
                   totalPairs >= primaryVolumeQty ? 'text-emerald-300 font-bold' : 'text-zinc-400'
                 }
               >
-                🔥 {primaryVolumeQty}+ sortidos (€20/par){' '}
+                🔥 {primaryVolumeQty}+ sortidos ({fmt(sampleVolumePrice)}/par){' '}
                 {totalPairs >= primaryVolumeQty ? '✓ Ativado' : ''}
               </span>
             </div>
@@ -256,13 +259,12 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
             {totalPairs > 0 && totalPairs < primaryVolumeQty && (
               <p className="text-[10px] font-mono-sku text-amber-300/90 mt-1.5 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 text-center">
                 Adicione mais <strong>{primaryVolumeQty - totalPairs}</strong> pares sortidos para o
-                preço de TODOS os modelos cair automaticamente para <strong>€ 20,00</strong> cada!
+                preço de TODOS os modelos cair automaticamente para <strong>{fmt(sampleVolumePrice)}</strong> cada!
               </p>
             )}
             {totalPairs >= primaryVolumeQty && (
               <p className="text-[10px] font-mono-sku text-emerald-300 mt-1.5 bg-emerald-500/15 px-2 py-1 rounded border border-emerald-500/30 text-center font-bold">
-                🎉 Desconto Máximo Ativado: Todos os {totalPairs} pares sortidos faturados a apenas €
-                20,00 cada!
+                🎉 Desconto Máximo Ativado: Todos os {totalPairs} pares sortidos faturados a apenas {fmt(sampleVolumePrice)} cada!
               </p>
             )}
           </div>
@@ -424,7 +426,7 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                     <div className="flex justify-between text-emerald-400 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
                       <span className="font-bold flex items-center gap-1">
                         <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Desconto Mega Lote ({primaryVolumeQty}+ sortidos a €20):</span>
+                        <span>Desconto Mega Lote ({primaryVolumeQty}+ sortidos a {fmt(sampleVolumePrice)}):</span>
                       </span>
                       <span className="font-bold tabular-nums">
                         -{fmt(

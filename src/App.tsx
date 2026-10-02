@@ -36,51 +36,30 @@ import {
   saveCartToStorage,
   loadCartFromStorage,
 } from './services/storage';
+import { formatCurrency } from './utils/currency';
 
 export default function App() {
   // Mode: Varejo vs Atacado (10+ un)
   const [mode, setMode] = useState<'varejo' | 'atacado'>('atacado');
 
-  // Version key to guarantee all devices receive the updated verified product data with Varejo €45 / Atacado 10+ €25 / Atacado 50+ €20
-  const CATALOG_VERSION_KEY = 'kicksluxe_catalog_v6_volume50_20';
-
   // Products state (persisted or preloaded)
   const [products, setProducts] = useState<SneakerProduct[]>(() => {
     try {
-      const storedVersion = localStorage.getItem('kicksluxe_catalog_version');
-      if (storedVersion !== CATALOG_VERSION_KEY) {
-        localStorage.setItem('kicksluxe_catalog_version', CATALOG_VERSION_KEY);
-        // Force update all products to retail 45, wholesale 25, volumeWholesalePrice 20, volumeWholesaleQty 50
-        const saved = localStorage.getItem('kicksluxe_products');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const updated = parsed.map((p: SneakerProduct) => ({
-              ...p,
-              retailPrice: 45,
-              wholesalePrice: 25,
-              volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
-              volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
-              profitMarginPct: 80,
-            }));
-            saveProductsToStorage(updated);
-            return updated;
-          }
-        }
-        saveProductsToStorage(INITIAL_PRODUCTS);
-        return INITIAL_PRODUCTS;
-      }
       const saved = localStorage.getItem('kicksluxe_products');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map((p: SneakerProduct) => ({
             ...p,
-            retailPrice: p.retailPrice || 45,
-            wholesalePrice: p.wholesalePrice || 25,
+            retailPrice: typeof p.retailPrice === 'number' ? p.retailPrice : 45,
+            wholesalePrice: typeof p.wholesalePrice === 'number' ? p.wholesalePrice : 25,
             volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
             volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
-            profitMarginPct: 80,
+            profitMarginPct:
+              p.profitMarginPct ||
+              Math.round(
+                (((p.retailPrice || 45) - (p.wholesalePrice || 25)) / (p.wholesalePrice || 25)) * 100
+              ),
           }));
         }
       }
@@ -105,54 +84,17 @@ export default function App() {
     return loadCartFromStorage();
   });
 
-  // Load larger catalog from IndexedDB on mount if available
+  // Load catalog and stores from storage on mount without overriding user changes
   useEffect(() => {
     let isMounted = true;
-    const storedVersion = localStorage.getItem('kicksluxe_catalog_version');
-
-    if (storedVersion !== CATALOG_VERSION_KEY) {
-      localStorage.setItem('kicksluxe_catalog_version', CATALOG_VERSION_KEY);
-      loadProductsFromStorage().then((saved) => {
-        if (isMounted && saved && saved.length > 0) {
-          const updated = saved.map((p) => ({
-            ...p,
-            retailPrice: 45,
-            wholesalePrice: 25,
-            volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
-            volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
-            profitMarginPct: 80,
-          }));
-          saveProductsToStorage(updated);
-          setProducts(updated);
-        } else {
-          saveProductsToStorage(INITIAL_PRODUCTS);
-          setProducts(INITIAL_PRODUCTS);
-        }
-      });
-    } else {
-      loadProductsFromStorage().then((saved) => {
-        if (isMounted && saved && saved.length > 0) {
-          // Guarantee all loaded products have retail 45, wholesale 25, and volume tier defaults
-          const needsPriceUpdate = saved.some(
-            (p) => p.retailPrice !== 45 || p.wholesalePrice !== 25 || p.volumeWholesalePrice === undefined
-          );
-          if (needsPriceUpdate) {
-            const updated = saved.map((p) => ({
-              ...p,
-              retailPrice: 45,
-              wholesalePrice: 25,
-              volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
-              volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
-              profitMarginPct: 80,
-            }));
-            saveProductsToStorage(updated);
-            setProducts(updated);
-          } else {
-            setProducts(saved);
-          }
-        }
-      });
-    }
+    loadProductsFromStorage().then((saved) => {
+      if (isMounted && saved && saved.length > 0) {
+        setProducts(saved);
+      } else if (isMounted) {
+        saveProductsToStorage(INITIAL_PRODUCTS);
+        setProducts(INITIAL_PRODUCTS);
+      }
+    });
 
     loadStoresFromStorage().then((savedStores) => {
       if (isMounted && savedStores && savedStores.length > 0) {
@@ -486,18 +428,28 @@ export default function App() {
   };
 
   const handleAddManualProduct = (newProduct: SneakerProduct) => {
-    setProducts((prev) => [newProduct, ...prev]);
+    setProducts((prev) => {
+      const updated = [newProduct, ...prev];
+      saveProductsToStorage(updated);
+      return updated;
+    });
   };
 
   const handleDeleteProduct = (productId: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    setProducts((prev) => {
+      const updated = prev.filter((p) => p.id !== productId);
+      saveProductsToStorage(updated);
+      return updated;
+    });
   };
 
   const handleBulkUpdateProducts = (updatedProducts: SneakerProduct[]) => {
     if (!updatedProducts || updatedProducts.length === 0) return;
     setProducts((prev) => {
       const updateMap = new Map(updatedProducts.map((p) => [p.id, p]));
-      return prev.map((p) => updateMap.get(p.id) || p);
+      const updated = prev.map((p) => updateMap.get(p.id) || p);
+      saveProductsToStorage(updated);
+      return updated;
     });
   };
 
@@ -509,8 +461,8 @@ export default function App() {
     volumeWholesaleQty?: number
   ) => {
     const margin = Math.round(((retailPrice - wholesalePrice) / wholesalePrice) * 100);
-    setProducts((prev) =>
-      prev.map((p) =>
+    setProducts((prev) => {
+      const updated = prev.map((p) =>
         p.id === productId
           ? {
               ...p,
@@ -521,8 +473,10 @@ export default function App() {
               profitMarginPct: margin,
             }
           : p
-      )
-    );
+      );
+      saveProductsToStorage(updated);
+      return updated;
+    });
     if (detailProduct && detailProduct.id === productId) {
       setDetailProduct((prev) =>
         prev
@@ -542,12 +496,15 @@ export default function App() {
   const handleImportCatalog = (imported: SneakerProduct[], mode: 'merge' | 'replace' = 'replace') => {
     if (!imported || imported.length === 0) return;
     if (mode === 'replace') {
+      saveProductsToStorage(imported);
       setProducts(imported);
     } else {
       setProducts((prev) => {
         const existingIds = new Set(prev.map((p) => p.id));
         const unique = imported.filter((p) => !existingIds.has(p.id));
-        return [...unique, ...prev];
+        const merged = [...unique, ...prev];
+        saveProductsToStorage(merged);
+        return merged;
       });
     }
   };
@@ -560,6 +517,51 @@ export default function App() {
   const scrollToCatalog = () => {
     catalogRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Dynamically compute wholesale pricing overview from current catalog products
+  const catalogPricingSummary = useMemo(() => {
+    if (!products || products.length === 0) {
+      return {
+        minWholesale: 25,
+        maxWholesale: 25,
+        minRetail: 45,
+        maxRetail: 45,
+        volumeWholesale: 20,
+        volumeQty: 50,
+        marginStandard: 80,
+        marginVolume: 125,
+        isUniformWholesale: true,
+        isUniformRetail: true,
+      };
+    }
+    const wholesalePrices = products.map((p) => p.wholesalePrice || 25);
+    const retailPrices = products.map((p) => p.retailPrice || 45);
+    const volumePrices = products.map((p) => p.volumeWholesalePrice ?? 20);
+    const volumeQtys = products.map((p) => p.volumeWholesaleQty ?? 50);
+
+    const minW = Math.min(...wholesalePrices);
+    const maxW = Math.max(...wholesalePrices);
+    const minR = Math.min(...retailPrices);
+    const maxR = Math.max(...retailPrices);
+    const volP = volumePrices[0] ?? 20;
+    const volQ = volumeQtys[0] ?? 50;
+
+    const marginStandard = minW > 0 ? Math.round(((minR - minW) / minW) * 100) : 80;
+    const marginVolume = volP > 0 ? Math.round(((minR - volP) / volP) * 100) : 125;
+
+    return {
+      minWholesale: minW,
+      maxWholesale: maxW,
+      minRetail: minR,
+      maxRetail: maxR,
+      volumeWholesale: volP,
+      volumeQty: volQ,
+      marginStandard,
+      marginVolume,
+      isUniformWholesale: minW === maxW,
+      isUniformRetail: minR === maxR,
+    };
+  }, [products]);
 
   return (
     <div className={`min-h-screen ${theme === 'light' ? 'theme-light bg-[#f7f7f9] text-[#18181b]' : 'theme-dark bg-[#131314] text-[#e5e2e3]'} flex flex-col font-jakarta relative overflow-x-hidden transition-colors duration-300`}>
@@ -608,7 +610,7 @@ export default function App() {
             </h2>
             <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-2xl font-jakarta">
               {mode === 'atacado'
-                ? 'Preços diferenciados para pedidos a partir de 10 pares com margens entre 110% a 155% e nota fiscal emitida.'
+                ? 'Preços diferenciados para pedidos a partir de 10 pares com margens entre 80% a 155% e nota fiscal emitida.'
                 : 'Pares autênticos com laudo pericial 1:1, entrega blindada e garantia de procedência.'}
             </p>
           </div>
@@ -621,21 +623,32 @@ export default function App() {
                   <TrendingUp className="w-4 h-4 text-amber-400 animate-pulse" />
                   <div>
                     <span className="text-zinc-400 block text-[10px] uppercase">ATACADO 10+ UN</span>
-                    <span className="text-amber-300 font-bold text-3d-subtle">€ 25,00 / par</span>
+                    <span className="text-amber-300 font-bold text-3d-subtle">
+                      {catalogPricingSummary.isUniformWholesale
+                        ? formatCurrency(catalogPricingSummary.minWholesale)
+                        : `A partir de ${formatCurrency(catalogPricingSummary.minWholesale)}`}
+                      {' '}/ par
+                    </span>
                   </div>
                 </div>
                 <div className="h-7 w-px bg-white/10"></div>
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-400 animate-bounce" />
                   <div>
-                    <span className="text-emerald-400 block text-[10px] uppercase font-bold">🔥 +50 OU 100 SORTIDOS</span>
-                    <span className="text-emerald-300 font-extrabold text-3d-subtle">€ 20,00 / par (Auto)</span>
+                    <span className="text-emerald-400 block text-[10px] uppercase font-bold">
+                      🔥 +{catalogPricingSummary.volumeQty} SORTIDOS
+                    </span>
+                    <span className="text-emerald-300 font-extrabold text-3d-subtle">
+                      {formatCurrency(catalogPricingSummary.volumeWholesale)} / par (Auto)
+                    </span>
                   </div>
                 </div>
                 <div className="h-7 w-px bg-white/10"></div>
                 <div>
                   <span className="text-zinc-400 block text-[10px] uppercase">LUCRO NA REVENDA</span>
-                  <span className="text-emerald-400 font-extrabold text-3d-subtle">+80% a +125%</span>
+                  <span className="text-emerald-400 font-extrabold text-3d-subtle">
+                    +{catalogPricingSummary.marginStandard}% {catalogPricingSummary.marginStandard !== catalogPricingSummary.marginVolume ? `a +${catalogPricingSummary.marginVolume}%` : ''}
+                  </span>
                 </div>
               </div>
             </div>
@@ -652,14 +665,14 @@ export default function App() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="font-syne font-extrabold text-sm text-white">
-                    Desconto Automático por Volume: Compre +50 ou 100 Pares Sortidos a € 20,00 cada!
+                    Desconto Automático por Volume: Compre +{catalogPricingSummary.volumeQty} Pares Sortidos a {formatCurrency(catalogPricingSummary.volumeWholesale)} cada!
                   </h4>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-400 text-black font-mono-sku font-black text-[10px] tracking-wide">
                     PARES 100% SORTIDOS
                   </span>
                 </div>
                 <p className="text-xs text-emerald-200/80 font-jakarta mt-1">
-                  Exemplo: Valor público de venda a <strong>€ 45,00</strong>. Atacado padrão sai a <strong>€ 25,00</strong>. Atingindo <strong>50 ou 100 pares sortidos</strong> (qualquer modelo e numeração misturados), o sistema aplica <strong>automaticamente € 20,00</strong> em cada par no seu pedido!
+                  Exemplo: Valor público de venda a <strong>{formatCurrency(catalogPricingSummary.minRetail)}</strong>. Atacado padrão sai a <strong>{catalogPricingSummary.isUniformWholesale ? formatCurrency(catalogPricingSummary.minWholesale) : `a partir de ${formatCurrency(catalogPricingSummary.minWholesale)}`}</strong>. Atingindo <strong>{catalogPricingSummary.volumeQty} pares sortidos</strong> (qualquer modelo e numeração misturados), o sistema aplica <strong>automaticamente {formatCurrency(catalogPricingSummary.volumeWholesale)}</strong> em cada par no seu pedido!
                 </p>
               </div>
             </div>
