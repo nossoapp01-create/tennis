@@ -41,8 +41,8 @@ export default function App() {
   // Mode: Varejo vs Atacado (10+ un)
   const [mode, setMode] = useState<'varejo' | 'atacado'>('atacado');
 
-  // Version key to guarantee all devices receive the updated verified product data with Varejo €45 / Atacado €25
-  const CATALOG_VERSION_KEY = 'kicksluxe_catalog_v5_varejo45_atacado25';
+  // Version key to guarantee all devices receive the updated verified product data with Varejo €45 / Atacado 10+ €25 / Atacado 50+ €20
+  const CATALOG_VERSION_KEY = 'kicksluxe_catalog_v6_volume50_20';
 
   // Products state (persisted or preloaded)
   const [products, setProducts] = useState<SneakerProduct[]>(() => {
@@ -50,7 +50,7 @@ export default function App() {
       const storedVersion = localStorage.getItem('kicksluxe_catalog_version');
       if (storedVersion !== CATALOG_VERSION_KEY) {
         localStorage.setItem('kicksluxe_catalog_version', CATALOG_VERSION_KEY);
-        // Force update all products to retail 45 and wholesale 25
+        // Force update all products to retail 45, wholesale 25, volumeWholesalePrice 20, volumeWholesaleQty 50
         const saved = localStorage.getItem('kicksluxe_products');
         if (saved) {
           const parsed = JSON.parse(saved);
@@ -59,6 +59,8 @@ export default function App() {
               ...p,
               retailPrice: 45,
               wholesalePrice: 25,
+              volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
+              volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
               profitMarginPct: 80,
             }));
             saveProductsToStorage(updated);
@@ -74,8 +76,10 @@ export default function App() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map((p: SneakerProduct) => ({
             ...p,
-            retailPrice: 45,
-            wholesalePrice: 25,
+            retailPrice: p.retailPrice || 45,
+            wholesalePrice: p.wholesalePrice || 25,
+            volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
+            volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
             profitMarginPct: 80,
           }));
         }
@@ -114,6 +118,8 @@ export default function App() {
             ...p,
             retailPrice: 45,
             wholesalePrice: 25,
+            volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
+            volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
             profitMarginPct: 80,
           }));
           saveProductsToStorage(updated);
@@ -126,13 +132,17 @@ export default function App() {
     } else {
       loadProductsFromStorage().then((saved) => {
         if (isMounted && saved && saved.length > 0) {
-          // Guarantee all loaded products have retail 45 and wholesale 25
-          const needsPriceUpdate = saved.some((p) => p.retailPrice !== 45 || p.wholesalePrice !== 25);
+          // Guarantee all loaded products have retail 45, wholesale 25, and volume tier defaults
+          const needsPriceUpdate = saved.some(
+            (p) => p.retailPrice !== 45 || p.wholesalePrice !== 25 || p.volumeWholesalePrice === undefined
+          );
           if (needsPriceUpdate) {
             const updated = saved.map((p) => ({
               ...p,
               retailPrice: 45,
               wholesalePrice: 25,
+              volumeWholesalePrice: p.volumeWholesalePrice ?? 20,
+              volumeWholesaleQty: p.volumeWholesaleQty ?? 50,
               profitMarginPct: 80,
             }));
             saveProductsToStorage(updated);
@@ -491,7 +501,13 @@ export default function App() {
     });
   };
 
-  const handleUpdateProductPrices = (productId: string, wholesalePrice: number, retailPrice: number) => {
+  const handleUpdateProductPrices = (
+    productId: string,
+    wholesalePrice: number,
+    retailPrice: number,
+    volumeWholesalePrice?: number,
+    volumeWholesaleQty?: number
+  ) => {
     const margin = Math.round(((retailPrice - wholesalePrice) / wholesalePrice) * 100);
     setProducts((prev) =>
       prev.map((p) =>
@@ -500,6 +516,8 @@ export default function App() {
               ...p,
               wholesalePrice,
               retailPrice,
+              volumeWholesalePrice: volumeWholesalePrice !== undefined ? volumeWholesalePrice : (p.volumeWholesalePrice ?? 20),
+              volumeWholesaleQty: volumeWholesaleQty !== undefined ? volumeWholesaleQty : (p.volumeWholesaleQty ?? 50),
               profitMarginPct: margin,
             }
           : p
@@ -512,6 +530,8 @@ export default function App() {
               ...prev,
               wholesalePrice,
               retailPrice,
+              volumeWholesalePrice: volumeWholesalePrice !== undefined ? volumeWholesalePrice : (prev.volumeWholesalePrice ?? 20),
+              volumeWholesaleQty: volumeWholesaleQty !== undefined ? volumeWholesaleQty : (prev.volumeWholesaleQty ?? 50),
               profitMarginPct: margin,
             }
           : null
@@ -595,22 +615,67 @@ export default function App() {
 
           {/* Wholesale Mode Tier Summary Pill */}
           {mode === 'atacado' && (
-            <div className="badge-3d-dark highlight-glow-ribbon rounded-2xl p-3.5 flex items-center gap-4 text-xs font-mono-sku shadow-xl">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-amber-400 animate-pulse" />
-                <div>
-                  <span className="text-zinc-400 block text-[10px] uppercase">TABELA DE ATACADO</span>
-                  <span className="text-white font-bold text-3d-subtle">10+ Pares Ativado</span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="badge-3d-dark highlight-glow-ribbon rounded-2xl p-3.5 flex items-center gap-4 text-xs font-mono-sku shadow-xl">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <div>
+                    <span className="text-zinc-400 block text-[10px] uppercase">ATACADO 10+ UN</span>
+                    <span className="text-amber-300 font-bold text-3d-subtle">€ 25,00 / par</span>
+                  </div>
                 </div>
-              </div>
-              <div className="h-7 w-px bg-white/10"></div>
-              <div>
-                <span className="text-zinc-400 block text-[10px] uppercase">MARGEM MÉDIA</span>
-                <span className="text-emerald-400 font-extrabold text-3d-subtle">+135% Bruto</span>
+                <div className="h-7 w-px bg-white/10"></div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-400 animate-bounce" />
+                  <div>
+                    <span className="text-emerald-400 block text-[10px] uppercase font-bold">🔥 +50 OU 100 SORTIDOS</span>
+                    <span className="text-emerald-300 font-extrabold text-3d-subtle">€ 20,00 / par (Auto)</span>
+                  </div>
+                </div>
+                <div className="h-7 w-px bg-white/10"></div>
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">LUCRO NA REVENDA</span>
+                  <span className="text-emerald-400 font-extrabold text-3d-subtle">+80% a +125%</span>
+                </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* Wholesale Assorted Volume Incentive Bar */}
+        {mode === 'atacado' && (
+          <div className="mb-6 bg-gradient-to-r from-emerald-950/60 via-[#18231c] to-teal-950/50 border border-emerald-500/40 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 shadow-inner">
+                <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-syne font-extrabold text-sm text-white">
+                    Desconto Automático por Volume: Compre +50 ou 100 Pares Sortidos a € 20,00 cada!
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-400 text-black font-mono-sku font-black text-[10px] tracking-wide">
+                    PARES 100% SORTIDOS
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-200/80 font-jakarta mt-1">
+                  Exemplo: Valor público de venda a <strong>€ 45,00</strong>. Atacado padrão sai a <strong>€ 25,00</strong>. Atingindo <strong>50 ou 100 pares sortidos</strong> (qualquer modelo e numeração misturados), o sistema aplica <strong>automaticamente € 20,00</strong> em cada par no seu pedido!
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-syne font-extrabold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
+                <span>Ver Manifesto ({cartPairsCount} pares)</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Filter and Category Navigation */}
         <div className="space-y-4 mb-8">

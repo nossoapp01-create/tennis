@@ -37,7 +37,13 @@ interface InventoryManagementTabProps {
   onAddProduct: (product: SneakerProduct) => void;
   onDeleteProduct: (productId: string) => void;
   onBulkUpdateProducts?: (updated: SneakerProduct[]) => void;
-  onUpdateProductPrices?: (productId: string, wholesalePrice: number, retailPrice: number) => void;
+  onUpdateProductPrices?: (
+    productId: string,
+    wholesalePrice: number,
+    retailPrice: number,
+    volumeWholesalePrice?: number,
+    volumeWholesaleQty?: number
+  ) => void;
   onImportCatalog?: (products: SneakerProduct[], mode?: 'merge' | 'replace') => void;
 }
 
@@ -64,11 +70,15 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
   const [priceModalProduct, setPriceModalProduct] = useState<SneakerProduct | null>(null);
   const [modalWholesale, setModalWholesale] = useState<string>('');
   const [modalRetail, setModalRetail] = useState<string>('');
+  const [modalVolumePrice, setModalVolumePrice] = useState<string>('20');
+  const [modalVolumeQty, setModalVolumeQty] = useState<number>(50);
 
   // Bulk selection and repricing states
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [bulkPricingTarget, setBulkPricingTarget] = useState<'selected' | 'all'>('all');
   const [bulkWholesalePrice, setBulkWholesalePrice] = useState<string>('25');
+  const [bulkVolumeQty, setBulkVolumeQty] = useState<number>(50); // 50 ou 100 pares
+  const [bulkVolumePrice, setBulkVolumePrice] = useState<string>('20');
   const [bulkRetailPrice, setBulkRetailPrice] = useState<string>('45');
   const [isAutoRetail, setIsAutoRetail] = useState<boolean>(false);
   const [autoMarkupPercent, setAutoMarkupPercent] = useState<number>(80);
@@ -176,6 +186,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     category: 'High-Top',
     retailPrice: 45,
     wholesalePrice: 25,
+    volumeWholesalePrice: 20,
+    volumeWholesaleQty: 50,
     minWholesaleQty: 10,
     badge: 'GRADE DISPONÍVEL',
     image: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=800&q=80',
@@ -261,12 +273,17 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     setPriceModalProduct(prod);
     setModalWholesale(prod.wholesalePrice.toString());
     setModalRetail(prod.retailPrice.toString());
+    setModalVolumePrice((prod.volumeWholesalePrice ?? 20).toString());
+    setModalVolumeQty(prod.volumeWholesaleQty ?? 50);
   };
 
   const handleSavePriceModal = () => {
     if (!priceModalProduct) return;
     const wholesaleNum = parseFloat(modalWholesale.replace(',', '.'));
     const retailNum = parseFloat(modalRetail.replace(',', '.'));
+    const volumePriceNum = parseFloat(modalVolumePrice.replace(',', '.'));
+    const volumeQtyNum = modalVolumeQty || 50;
+
     if (isNaN(wholesaleNum) || wholesaleNum <= 0 || isNaN(retailNum) || retailNum <= 0) {
       setFeedbackToast({
         message: 'Informe valores numéricos válidos maiores que zero.',
@@ -276,8 +293,16 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
       return;
     }
 
+    const validVolumePrice = !isNaN(volumePriceNum) && volumePriceNum > 0 ? volumePriceNum : 20;
+
     if (onUpdateProductPrices) {
-      onUpdateProductPrices(priceModalProduct.id, wholesaleNum, retailNum);
+      onUpdateProductPrices(
+        priceModalProduct.id,
+        wholesaleNum,
+        retailNum,
+        validVolumePrice,
+        volumeQtyNum
+      );
     } else if (onBulkUpdateProducts) {
       const margin = Math.round(((retailNum - wholesaleNum) / wholesaleNum) * 100);
       onBulkUpdateProducts([
@@ -285,6 +310,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
           ...priceModalProduct,
           wholesalePrice: wholesaleNum,
           retailPrice: retailNum,
+          volumeWholesalePrice: validVolumePrice,
+          volumeWholesaleQty: volumeQtyNum,
           profitMarginPct: margin,
         },
       ]);
@@ -293,7 +320,7 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     const prodName = priceModalProduct.name;
     setPriceModalProduct(null);
     setFeedbackToast({
-      message: `Preços de "${prodName}" atualizados! Atacado: € ${wholesaleNum.toFixed(2)} | Varejo: € ${retailNum.toFixed(2)}`,
+      message: `Preços de "${prodName}" atualizados! Atacado 10+: € ${wholesaleNum.toFixed(2)} | ${volumeQtyNum}+ sortidos: € ${validVolumePrice.toFixed(2)} | Varejo: € ${retailNum.toFixed(2)}`,
       type: 'success',
     });
     setTimeout(() => setFeedbackToast(null), 4000);
@@ -312,6 +339,7 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     const retailVal = isAutoRetail
       ? Math.max(Math.round(wholesaleVal * (1 + autoMarkupPercent / 100)), wholesaleVal + 2)
       : parseFloat(bulkRetailPrice) || Math.round(wholesaleVal * 2);
+    const volumePriceVal = parseFloat(bulkVolumePrice) || Math.max(1, wholesaleVal - 5);
 
     setBulkWholesalePrice(wholesaleVal.toString());
     setBulkRetailPrice(retailVal.toString());
@@ -336,6 +364,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
         ...p,
         wholesalePrice: wholesaleVal,
         retailPrice: retailVal,
+        volumeWholesalePrice: volumePriceVal,
+        volumeWholesaleQty: bulkVolumeQty || 50,
         profitMarginPct: margin,
       };
     });
@@ -354,13 +384,15 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
   const handleApplyBulkPricing = () => {
     const wholesaleVal = parseFloat(bulkWholesalePrice.replace(',', '.'));
     const retailVal = parseFloat(bulkRetailPrice.replace(',', '.'));
+    const volumePriceVal = parseFloat(bulkVolumePrice.replace(',', '.'));
 
     const hasValidWholesale = !isNaN(wholesaleVal) && wholesaleVal > 0;
     const hasValidRetail = !isNaN(retailVal) && retailVal > 0;
+    const hasValidVolume = !isNaN(volumePriceVal) && volumePriceVal > 0;
 
-    if (!hasValidWholesale && !hasValidRetail) {
+    if (!hasValidWholesale && !hasValidRetail && !hasValidVolume) {
       setFeedbackToast({
-        message: 'Por favor, informe um valor válido para o Preço de Atacado ou Varejo (ex: 10 ou 1).',
+        message: 'Por favor, informe um valor válido para o Preço de Atacado, Lote Volume ou Varejo.',
         type: 'error',
       });
       setTimeout(() => setFeedbackToast(null), 4000);
@@ -396,6 +428,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
         ...p,
         wholesalePrice: newWholesale,
         retailPrice: newRetail,
+        volumeWholesalePrice: hasValidVolume ? volumePriceVal : (p.volumeWholesalePrice ?? 20),
+        volumeWholesaleQty: bulkVolumeQty || 50,
         profitMarginPct: margin,
       };
     });
@@ -405,17 +439,19 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     }
 
     setFeedbackToast({
-      message: `Precificação em lote atualizada para ${targetProducts.length} produtos com sucesso!`,
+      message: `Precificação aplicada a ${targetProducts.length} modelos! Atacado 10+: €${hasValidWholesale ? wholesaleVal : bulkWholesalePrice} | ${bulkVolumeQty}+ sortidos: €${hasValidVolume ? volumePriceVal : bulkVolumePrice} | Varejo: €${retailVal || 45}`,
       type: 'success',
     });
     setTimeout(() => setFeedbackToast(null), 4500);
   };
 
-  const handleApplyStandardPricingAll = () => {
+  const handleApplyStandardPricingAll = (volumeQty: number = 50) => {
     const updated = products.map((p) => ({
       ...p,
       wholesalePrice: 25,
       retailPrice: 45,
+      volumeWholesalePrice: 20,
+      volumeWholesaleQty: volumeQty,
       profitMarginPct: 80,
     }));
     if (onBulkUpdateProducts) {
@@ -423,8 +459,10 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
     }
     setBulkWholesalePrice('25');
     setBulkRetailPrice('45');
+    setBulkVolumePrice('20');
+    setBulkVolumeQty(volumeQty);
     setFeedbackToast({
-      message: `Todos os ${products.length} produtos atualizados com sucesso para Varejo €45 e Atacado €25 (80% margem)!`,
+      message: `Todos os ${products.length} produtos atualizados com sucesso: Varejo €45, Atacado 10+ €25 e ${volumeQty}+ sortidos €20!`,
       type: 'success',
     });
     setTimeout(() => setFeedbackToast(null), 4500);
@@ -436,6 +474,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
 
     const retail = newProd.retailPrice || 45;
     const wholesale = newProd.wholesalePrice || 25;
+    const volumeWholesale = newProd.volumeWholesalePrice || 20;
+    const volumeQty = newProd.volumeWholesaleQty || 50;
     const margin = Math.round(((retail - wholesale) / wholesale) * 100);
 
     const created: SneakerProduct = {
@@ -446,6 +486,8 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
       category: newProd.category || 'Retro Runner',
       retailPrice: retail,
       wholesalePrice: wholesale,
+      volumeWholesalePrice: volumeWholesale,
+      volumeWholesaleQty: volumeQty,
       minWholesaleQty: 10,
       profitMarginPct: margin,
       badge: newProd.badge || 'GRADE DISPONÍVEL',
@@ -594,120 +636,175 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
         </div>
 
         {/* Target and Inputs Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-          <div className="lg:col-span-4 space-y-1.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3.5 items-end">
+          {/* Col 1: Aplicar Preço Em (3 cols) */}
+          <div className="lg:col-span-3 space-y-1">
             <label className="text-[11px] font-mono-sku text-zinc-400 block uppercase">
               Aplicar Preço Em:
             </label>
-            <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
+            <div className="grid grid-cols-2 gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10">
               <button
                 type="button"
                 onClick={() => setBulkPricingTarget('selected')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-syne font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-lg text-xs font-syne font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   bulkPricingTarget === 'selected'
                     ? 'bg-amber-400 text-black shadow-md'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <CheckSquare className="w-3.5 h-3.5" />
-                <span>Selecionados ({selectedProductIds.size})</span>
+                <span>Sel. ({selectedProductIds.size})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setBulkPricingTarget('all')}
-                className={`py-2 px-2.5 rounded-lg text-xs font-syne font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-lg text-xs font-syne font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   bulkPricingTarget === 'all'
                     ? 'bg-amber-400 text-black shadow-md'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Filtrados ({filtered.length})</span>
+                <span>Filt. ({filtered.length})</span>
               </button>
             </div>
           </div>
 
-          <div className="lg:col-span-5 grid grid-cols-2 gap-3">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-mono-sku text-amber-300 font-bold block">
-                  Atacado 10+ (€):
-                </label>
-                <span className="text-[9px] font-mono-sku text-zinc-500">EX: 10 ou 1</span>
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-amber-400 font-bold">
-                  €
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={bulkWholesalePrice}
-                  onChange={(e) => setBulkWholesalePrice(e.target.value)}
-                  placeholder="10"
-                  className="w-full bg-black/60 border border-amber-400/40 focus:border-amber-400 rounded-xl pl-7 pr-3 py-2 text-white font-mono-sku text-sm font-bold focus:outline-none"
-                />
-              </div>
+          {/* Col 2: Atacado 10+ (2 cols) */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-mono-sku text-amber-300 font-bold block">
+                Atacado 10+ (€):
+              </label>
+              <span className="text-[9px] font-mono-sku text-zinc-500">EX: 25</span>
             </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-mono-sku text-zinc-300 block">
-                  Varejo (€):
-                </label>
-                <label className="flex items-center gap-1 text-[9px] font-mono-sku text-zinc-400 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isAutoRetail}
-                    onChange={(e) => setIsAutoRetail(e.target.checked)}
-                    className="w-3 h-3 accent-amber-400 rounded"
-                  />
-                  <span>Auto (+150%)</span>
-                </label>
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-zinc-400 font-bold">
-                  €
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={
-                    isAutoRetail
-                      ? parseFloat(bulkWholesalePrice)
-                        ? Math.max(
-                            Math.round(parseFloat(bulkWholesalePrice) * (1 + autoMarkupPercent / 100)),
-                            parseFloat(bulkWholesalePrice) + 2
-                          )
-                        : 25
-                      : bulkRetailPrice
-                  }
-                  disabled={isAutoRetail}
-                  onChange={(e) => setBulkRetailPrice(e.target.value)}
-                  placeholder="25"
-                  className={`w-full bg-black/60 border rounded-xl pl-7 pr-3 py-2 text-white font-mono-sku text-sm font-bold focus:outline-none ${
-                    isAutoRetail
-                      ? 'border-white/10 text-zinc-400 cursor-not-allowed opacity-80'
-                      : 'border-white/20 focus:border-white/40'
-                  }`}
-                />
-              </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-amber-400 font-bold">
+                €
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={bulkWholesalePrice}
+                onChange={(e) => setBulkWholesalePrice(e.target.value)}
+                placeholder="25"
+                className="w-full bg-black/60 border border-amber-400/40 focus:border-amber-400 rounded-xl pl-7 pr-3 py-2 text-white font-mono-sku text-sm font-bold focus:outline-none"
+              />
             </div>
           </div>
 
-          <div className="lg:col-span-3 flex flex-col justify-end">
+          {/* Col 3: Atacado Volume Sortido (+50 ou +100 pares) (3 cols) */}
+          <div className="lg:col-span-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-2 rounded-2xl border border-emerald-500/30">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-mono-sku text-emerald-300 font-bold flex items-center gap-1">
+                <span>🔥 Lote Sortido:</span>
+              </label>
+              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-emerald-500/30">
+                <button
+                  type="button"
+                  onClick={() => setBulkVolumeQty(50)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono-sku font-extrabold transition-all cursor-pointer ${
+                    bulkVolumeQty === 50
+                      ? 'bg-emerald-400 text-black shadow-sm'
+                      : 'text-zinc-400 hover:text-emerald-300'
+                  }`}
+                >
+                  +50
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkVolumeQty(100)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono-sku font-extrabold transition-all cursor-pointer ${
+                    bulkVolumeQty === 100
+                      ? 'bg-emerald-400 text-black shadow-sm'
+                      : 'text-zinc-400 hover:text-emerald-300'
+                  }`}
+                >
+                  +100
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-emerald-400 font-bold">
+                  €
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={bulkVolumePrice}
+                  onChange={(e) => setBulkVolumePrice(e.target.value)}
+                  placeholder="20"
+                  className="w-full bg-black/70 border border-emerald-500/40 focus:border-emerald-400 rounded-xl pl-6 pr-2 py-1.5 text-emerald-300 font-mono-sku text-sm font-bold focus:outline-none"
+                  title={`Preço por par comprando acima de ${bulkVolumeQty} pares sortidos`}
+                />
+              </div>
+              <span className="text-[10px] font-mono-sku text-emerald-300/80 leading-tight">
+                sai <strong>€{bulkVolumePrice || '20'}</strong> em <strong>{bulkVolumeQty}+</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* Col 4: Varejo (€) (2 cols) */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-mono-sku text-zinc-300 block">
+                Varejo (€):
+              </label>
+              <label className="flex items-center gap-1 text-[9px] font-mono-sku text-zinc-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isAutoRetail}
+                  onChange={(e) => setIsAutoRetail(e.target.checked)}
+                  className="w-3 h-3 accent-amber-400 rounded"
+                />
+                <span>Auto</span>
+              </label>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-zinc-400 font-bold">
+                €
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={
+                  isAutoRetail
+                    ? parseFloat(bulkWholesalePrice)
+                      ? Math.max(
+                          Math.round(parseFloat(bulkWholesalePrice) * (1 + autoMarkupPercent / 100)),
+                          parseFloat(bulkWholesalePrice) + 2
+                        )
+                      : 45
+                    : bulkRetailPrice
+                }
+                disabled={isAutoRetail}
+                onChange={(e) => setBulkRetailPrice(e.target.value)}
+                placeholder="45"
+                className={`w-full bg-black/60 border rounded-xl pl-7 pr-3 py-2 text-white font-mono-sku text-sm font-bold focus:outline-none ${
+                  isAutoRetail
+                    ? 'border-white/10 text-zinc-400 cursor-not-allowed opacity-80'
+                    : 'border-white/20 focus:border-white/40'
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* Col 5: Botão Aplicar (2 cols) */}
+          <div className="lg:col-span-2 flex flex-col justify-end">
             <button
               type="button"
               onClick={handleApplyBulkPricing}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition-all transform active:scale-95"
+              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-syne font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 transition-all transform active:scale-95 cursor-pointer"
             >
               <Zap className="w-4 h-4 fill-black" />
               <span>
-                Aplicar {bulkWholesalePrice ? `€ ${bulkWholesalePrice}` : ''} aos{' '}
-                {bulkPricingTarget === 'all' ? 'Filtrados' : 'Selecionados'}
+                Aplicar aos {bulkPricingTarget === 'all' ? 'Filtrados' : 'Selecionados'}
               </span>
             </button>
           </div>
@@ -722,12 +819,21 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
             </span>
             <button
               type="button"
-              onClick={handleApplyStandardPricingAll}
-              title="Definir todos os produtos do catálogo para Varejo €45 e Atacado €25"
-              className="px-3 py-1 rounded-lg text-[11px] font-mono-sku font-extrabold bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/30 flex items-center gap-1 shadow-sm transition-all"
+              onClick={() => handleApplyStandardPricingAll(50)}
+              title="Definir todos os produtos para: Varejo €45, Atacado 10+ €25 e 50+ sortidos €20"
+              className="px-3 py-1 rounded-lg text-[11px] font-mono-sku font-extrabold bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-500/30 flex items-center gap-1 shadow-sm transition-all cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Varejo €45 / Atacado €25 (Todos)</span>
+              <span>Varejo €45 / Atacado €25 / +50 un €20 (Todos)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyStandardPricingAll(100)}
+              title="Definir todos os produtos para: Varejo €45, Atacado 10+ €25 e 100+ sortidos €20"
+              className="px-3 py-1 rounded-lg text-[11px] font-mono-sku font-extrabold bg-gradient-to-r from-teal-500/20 to-cyan-500/20 text-teal-300 border border-teal-400/40 hover:bg-teal-500/30 flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+              <span>Varejo €45 / Atacado €25 / +100 un €20 (Todos)</span>
             </button>
             {[1, 5, 10, 15, 20, 25, 35, 50, 75, 100].map((val) => (
               <button
@@ -939,14 +1045,20 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                         </div>
                       ) : (
                         <div
-                          className="flex items-center gap-1.5 group/price cursor-pointer hover:text-amber-200 transition-colors"
+                          className="flex flex-col group/price cursor-pointer hover:text-amber-200 transition-colors"
                           onClick={() => handleStartInlineEdit(prod)}
                           title="Clique para editar Valor de Atacado"
                         >
-                          <span className="font-bold text-amber-300">
-                            {formatCurrency(prod.wholesalePrice)}
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-amber-300">
+                              {formatCurrency(prod.wholesalePrice)}
+                            </span>
+                            <Pencil className="w-3 h-3 text-amber-400 opacity-0 group-hover/price:opacity-100 transition-opacity" />
+                          </div>
+                          <span className="text-[10px] text-emerald-400 font-mono-sku font-semibold flex items-center gap-0.5">
+                            <span>{prod.volumeWholesaleQty || 50}+:</span>
+                            <span>{formatCurrency(prod.volumeWholesalePrice ?? 20)}</span>
                           </span>
-                          <Pencil className="w-3 h-3 text-amber-400 opacity-0 group-hover/price:opacity-100 transition-opacity" />
                         </div>
                       )}
                     </td>
@@ -1084,13 +1196,54 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-zinc-300 mb-1 font-semibold">Preço Atacado (€)</label>
+                  <label className="block text-amber-300 mb-1 font-semibold">Preço Atacado 10+ (€)</label>
                   <input
                     type="number"
                     value={newProd.wholesalePrice}
                     onChange={(e) => setNewProd({ ...newProd, wholesalePrice: Number(e.target.value) })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-white font-mono-sku"
+                    className="w-full bg-black/40 border border-amber-400/40 rounded-xl p-2.5 text-amber-300 font-mono-sku"
                   />
+                </div>
+                <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 col-span-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-emerald-300 font-semibold text-xs flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Atacado Lote Sortido Especial</span>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setNewProd({ ...newProd, volumeWholesaleQty: 50 })}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono-sku font-bold cursor-pointer ${
+                          (newProd.volumeWholesaleQty || 50) === 50 ? 'bg-emerald-400 text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        +50 pares
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewProd({ ...newProd, volumeWholesaleQty: 100 })}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono-sku font-bold cursor-pointer ${
+                          newProd.volumeWholesaleQty === 100 ? 'bg-emerald-400 text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        +100 pares
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-400 font-mono-sku font-bold">€</span>
+                    <input
+                      type="number"
+                      value={newProd.volumeWholesalePrice ?? 20}
+                      onChange={(e) => setNewProd({ ...newProd, volumeWholesalePrice: Number(e.target.value) })}
+                      placeholder="20"
+                      className="w-24 bg-black/60 border border-emerald-500/40 rounded-lg p-1.5 text-emerald-300 font-mono-sku font-bold text-xs"
+                    />
+                    <span className="text-[10px] text-zinc-400 font-mono-sku">
+                      Valor por par comprando acima de {newProd.volumeWholesaleQty || 50} pares sortidos
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1325,6 +1478,53 @@ export const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                   <p className="text-[10px] text-zinc-400 mt-1">
                     Preço de revenda sugerido na loja.
                   </p>
+                </div>
+
+                {/* Volume Wholesale Tier Field */}
+                <div className="sm:col-span-2 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-3.5 rounded-2xl border border-emerald-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-emerald-300 font-syne font-bold flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Preço para Lote de Volume Sortido</span>
+                    </label>
+                    <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-emerald-500/30">
+                      <button
+                        type="button"
+                        onClick={() => setModalVolumeQty(50)}
+                        className={`px-2.5 py-0.5 rounded text-[10px] font-mono-sku font-bold transition-all cursor-pointer ${
+                          modalVolumeQty === 50 ? 'bg-emerald-400 text-black' : 'text-zinc-400 hover:text-emerald-300'
+                        }`}
+                      >
+                        +50 pares
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModalVolumeQty(100)}
+                        className={`px-2.5 py-0.5 rounded text-[10px] font-mono-sku font-bold transition-all cursor-pointer ${
+                          modalVolumeQty === 100 ? 'bg-emerald-400 text-black' : 'text-zinc-400 hover:text-emerald-300'
+                        }`}
+                      >
+                        +100 pares
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-emerald-400 font-mono-sku font-bold">€</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={modalVolumePrice}
+                        onChange={(e) => setModalVolumePrice(e.target.value)}
+                        placeholder="Ex: 20.00"
+                        className="w-full bg-[#121113] border border-emerald-500/40 rounded-xl pl-8 pr-3 py-2 text-emerald-300 font-mono-sku font-bold text-sm focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                      />
+                    </div>
+                    <p className="text-[11px] text-emerald-300/80 font-mono-sku leading-tight">
+                      Ao atingir <strong>{modalVolumeQty}+</strong> pares sortidos no carrinho, o valor deste par cai automaticamente para <strong>€ {modalVolumePrice || '20'}</strong>!
+                    </p>
+                  </div>
                 </div>
               </div>
 

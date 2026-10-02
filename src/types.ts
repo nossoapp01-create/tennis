@@ -7,6 +7,8 @@ export interface SneakerProduct {
   retailPrice: number;
   wholesalePrice: number;
   minWholesaleQty: number;
+  volumeWholesalePrice?: number;
+  volumeWholesaleQty?: number;
   profitMarginPct: number;
   badge?: string;
   image: string;

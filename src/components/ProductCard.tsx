@@ -205,6 +205,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   +{product.profitMarginPct}%
                 </span>
               </div>
+              <div className="flex items-center justify-between text-[10px] mt-1 pt-1 border-t border-white/5 font-mono-sku">
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  🔥 {product.volumeWholesaleQty || 50}+ sortidos:
+                </span>
+                <span className="text-emerald-300 font-extrabold tabular-nums">
+                  {formatCurrency(product.volumeWholesalePrice ?? 20)}/par
+                </span>
+              </div>
             </div>
           ) : (
             <div className="flex items-baseline justify-between">

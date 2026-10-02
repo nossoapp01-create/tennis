@@ -46,30 +46,50 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
     return acc + pairsCount * item.product.retailPrice;
   }, 0);
 
-  const totalWholesaleValue = cart.reduce((acc, item) => {
+  // Target volume threshold (e.g. 50 or 100 pares sortidos)
+  const primaryVolumeQty = cart.length > 0
+    ? (cart[0].product.volumeWholesaleQty || 50)
+    : 50;
+
+  // Helper to determine the unit price of an item given the total assorted pairs in cart
+  const getItemUnitPrice = (item: CartItem): number => {
+    if (mode === 'varejo') {
+      return item.product.retailPrice;
+    }
+    const volumeQty = item.product.volumeWholesaleQty || 50;
+    // When total assorted pairs in the cart reach or exceed the volume threshold:
+    if (totalPairs >= volumeQty) {
+      return item.product.volumeWholesalePrice ?? 20;
+    }
+    return item.product.wholesalePrice;
+  };
+
+  const isItemVolumeActive = (item: CartItem): boolean => {
+    return mode === 'atacado' && totalPairs >= (item.product.volumeWholesaleQty || 50);
+  };
+
+  const isAnyVolumeActive = mode === 'atacado' && totalPairs >= primaryVolumeQty;
+
+  // Total effective billed value
+  const totalEffectiveWholesaleValue = cart.reduce((acc, item) => {
     const pairsCount = item.sizeQuantities.reduce((sAcc, sq) => sAcc + sq.quantity, 0);
-    return acc + pairsCount * item.product.wholesalePrice;
+    const unitPrice = getItemUnitPrice(item);
+    return acc + pairsCount * unitPrice;
   }, 0);
 
-  // Wholesale tiered discount rules
-  let tierDiscountPercent = 0;
-  let tierBadge = 'Sem Desconto Adicional';
-  if (totalPairs >= 50) {
-    tierDiscountPercent = 5; // extra 5% on top of wholesale
-    tierBadge = 'Tier Master 50+ un (-5% Extra + Frete Blindado VIP)';
-  } else if (totalPairs >= 25) {
-    tierDiscountPercent = 3;
-    tierBadge = 'Tier Prime 25+ un (-3% Extra)';
+  // Wholesale tiered discount status badge
+  let tierBadge = 'Abaixo do Mínimo de Atacado';
+  if (totalPairs >= primaryVolumeQty) {
+    tierBadge = `Mega Lote ${primaryVolumeQty}+ Sortidos Ativado (€ 20/par)`;
   } else if (totalPairs >= 10) {
-    tierDiscountPercent = 0;
-    tierBadge = 'Atacado Padrão 10+ un Ativado';
+    tierBadge = `Atacado Padrão 10+ Ativado (€ 25/par)`;
   } else {
-    tierBadge = `Faltam ${Math.max(0, 10 - totalPairs)} pares para ativar preço de atacado`;
+    tierBadge = `Faltam ${Math.max(0, 10 - totalPairs)} pares para ativar atacado`;
   }
 
   const effectiveTotal =
     mode === 'atacado'
-      ? totalWholesaleValue * (1 - tierDiscountPercent / 100)
+      ? totalEffectiveWholesaleValue
       : totalRetailValue;
 
   const estimatedProfit = totalRetailValue - effectiveTotal;
@@ -79,12 +99,14 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
 
   // Export CSV Manifest
   const handleExportCSV = () => {
-    let csv = 'Referencia_SKU,Modelo,Marca,Categoria,Tamanho,Quantidade,Preco_Unitario,Subtotal\n';
+    let csv = 'Referencia_SKU,Modelo,Marca,Categoria,Tamanho,Quantidade,Preco_Unitario,Subtotal,Faixa_Preco\n';
     cart.forEach((item) => {
       item.sizeQuantities.forEach((sq) => {
         if (sq.quantity > 0) {
-          const unit = mode === 'atacado' ? item.product.wholesalePrice : item.product.retailPrice;
-          csv += `"${item.product.sku}","${item.product.name}","${item.product.brand}","${item.product.category}",${sq.size},${sq.quantity},${unit},${unit * sq.quantity}\n`;
+          const unit = getItemUnitPrice(item);
+          const isVol = isItemVolumeActive(item);
+          const faixa = mode === 'varejo' ? 'Varejo' : isVol ? `Mega Lote ${item.product.volumeWholesaleQty || 50}+ Sortidos` : 'Atacado 10+';
+          csv += `"${item.product.sku}","${item.product.name}","${item.product.brand}","${item.product.category}",${sq.size},${sq.quantity},${unit},${unit * sq.quantity},"${faixa}"\n`;
         }
       });
     });
@@ -103,8 +125,11 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
     let text = `*SOLICITAÇÃO DE PEDIDO // KICKSLUXE VAULT*\n`;
     text += `*Modalidade:* ${mode === 'atacado' ? 'ATACADO B2B' : 'VAREJO PRIME'}\n`;
     text += `*Data:* ${new Date().toLocaleDateString('pt-BR')}\n`;
-    text += `*Total de Pares:* ${totalPairs}\n\n`;
-    text += `*--- ITENS E GRADES DO MANIFESTO ---*\n`;
+    text += `*Total de Pares:* ${totalPairs} un (Sortidos)\n`;
+    if (mode === 'atacado' && isAnyVolumeActive) {
+      text += `*Status de Preço:* MEGA LOTE ${primaryVolumeQty}+ SORTIDOS APLICADO (€20/par)\n`;
+    }
+    text += `\n*--- ITENS E GRADES DO MANIFESTO ---*\n`;
 
     cart.forEach((item, idx) => {
       const sizesSummary = item.sizeQuantities
@@ -112,11 +137,12 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
         .map((sq) => `Tam ${sq.size}: ${sq.quantity} un`)
         .join(', ');
 
-      const unit = mode === 'atacado' ? item.product.wholesalePrice : item.product.retailPrice;
-      text += `${idx + 1}. [REF #${item.product.sku}] ${item.product.name}\n   Grade: ${sizesSummary}\n   Unitário: ${fmt(unit)}\n\n`;
+      const unit = getItemUnitPrice(item);
+      const isVol = isItemVolumeActive(item);
+      text += `${idx + 1}. [REF #${item.product.sku}] ${item.product.name}\n   Grade: ${sizesSummary}\n   Unitário: ${fmt(unit)}${isVol ? ` (Mega Lote ${item.product.volumeWholesaleQty || 50}+ Sortidos)` : ''}\n\n`;
     });
 
-    text += `*VALOR TOTAL ESTIMADO:* ${fmt(effectiveTotal)}\n`;
+    text += `*VALOR TOTAL A FATURAR:* ${fmt(effectiveTotal)}\n`;
     if (mode === 'atacado') {
       text += `*LUCRO BRUTO ESTIMADO NA REVENDA:* ${fmt(estimatedProfit)}\n`;
     }
@@ -171,26 +197,74 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
 
         {/* Tier Discount Progress Bar (Atacado) */}
         {mode === 'atacado' && (
-          <div className="bg-[#131314] px-5 py-3 border-b border-white/5">
+          <div
+            className={`px-5 py-3 border-b transition-colors ${
+              totalPairs >= primaryVolumeQty
+                ? 'bg-gradient-to-r from-emerald-950/40 via-[#16221c] to-emerald-950/30 border-emerald-500/30'
+                : 'bg-[#131314] border-white/5'
+            }`}
+          >
             <div className="flex items-center justify-between text-xs mb-1.5 font-mono-sku">
-              <span className="text-zinc-300 flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-                <span>Status de Desconto de Volume:</span>
+              <span className="text-zinc-300 flex items-center gap-1.5 font-semibold">
+                <TrendingUp
+                  className={`w-3.5 h-3.5 ${
+                    totalPairs >= primaryVolumeQty ? 'text-emerald-400' : 'text-amber-400'
+                  }`}
+                />
+                <span>Faixa de Atacado (Pares Sortidos):</span>
               </span>
-              <span className="text-amber-400 font-bold">{tierBadge}</span>
+              <span
+                className={`font-bold flex items-center gap-1 ${
+                  totalPairs >= primaryVolumeQty ? 'text-emerald-300' : 'text-amber-400'
+                }`}
+              >
+                {totalPairs >= primaryVolumeQty && (
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                )}
+                {tierBadge}
+              </span>
             </div>
+
             {/* Progress bar */}
-            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+            <div className="w-full h-2.5 bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/10">
               <div
-                className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (totalPairs / 50) * 100)}%` }}
+                className={`h-full rounded-full transition-all duration-500 ${
+                  totalPairs >= primaryVolumeQty
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-300 shadow-[0_0_12px_rgba(52,211,153,0.5)]'
+                    : 'bg-gradient-to-r from-amber-500 to-amber-300'
+                }`}
+                style={{
+                  width: `${Math.min(100, Math.max(5, (totalPairs / primaryVolumeQty) * 100))}%`,
+                }}
               ></div>
             </div>
-            <div className="flex justify-between text-[10px] font-mono-sku text-zinc-500 mt-1">
-              <span>10 pares (Atacado)</span>
-              <span>25 pares (-3% extra)</span>
-              <span>50+ pares (-5% + Frete Grátis)</span>
+
+            <div className="flex justify-between text-[10px] font-mono-sku mt-1.5 text-zinc-400">
+              <span className={totalPairs >= 10 ? 'text-amber-300 font-bold' : 'text-zinc-500'}>
+                10 pares (Atacado €25)
+              </span>
+              <span
+                className={
+                  totalPairs >= primaryVolumeQty ? 'text-emerald-300 font-bold' : 'text-zinc-400'
+                }
+              >
+                🔥 {primaryVolumeQty}+ sortidos (€20/par){' '}
+                {totalPairs >= primaryVolumeQty ? '✓ Ativado' : ''}
+              </span>
             </div>
+
+            {totalPairs > 0 && totalPairs < primaryVolumeQty && (
+              <p className="text-[10px] font-mono-sku text-amber-300/90 mt-1.5 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 text-center">
+                Adicione mais <strong>{primaryVolumeQty - totalPairs}</strong> pares sortidos para o
+                preço de TODOS os modelos cair automaticamente para <strong>€ 20,00</strong> cada!
+              </p>
+            )}
+            {totalPairs >= primaryVolumeQty && (
+              <p className="text-[10px] font-mono-sku text-emerald-300 mt-1.5 bg-emerald-500/15 px-2 py-1 rounded border border-emerald-500/30 text-center font-bold">
+                🎉 Desconto Máximo Ativado: Todos os {totalPairs} pares sortidos faturados a apenas €
+                20,00 cada!
+              </p>
+            )}
           </div>
         )}
 
@@ -217,12 +291,19 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
           ) : (
             cart.map((item) => {
               const itemTotalPairs = item.sizeQuantities.reduce((acc, sq) => acc + sq.quantity, 0);
-              const unit = mode === 'atacado' ? item.product.wholesalePrice : item.product.retailPrice;
+              const unit = getItemUnitPrice(item);
+              const isVolActive = isItemVolumeActive(item);
+              const volQty = item.product.volumeWholesaleQty || 50;
+              const volPrice = item.product.volumeWholesalePrice ?? 20;
 
               return (
                 <div
                   key={item.product.id}
-                  className="bg-[#1d1c1e] border border-white/10 rounded-2xl p-4 flex flex-col gap-3 relative group"
+                  className={`border rounded-2xl p-4 flex flex-col gap-3 relative group transition-colors ${
+                    isVolActive
+                      ? 'bg-gradient-to-b from-[#1b231e] to-[#151c17] border-emerald-500/30'
+                      : 'bg-[#1d1c1e] border-white/10'
+                  }`}
                 >
                   {/* Item Header */}
                   <div className="flex items-start justify-between gap-3">
@@ -240,15 +321,36 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                         <h4 className="text-xs font-jakarta font-bold text-white line-clamp-1">
                           {item.product.name}
                         </h4>
-                        <span className="text-[11px] font-jakarta font-semibold text-zinc-400 tabular-nums">
-                          {fmt(unit)} / par
-                        </span>
+                        {isVolActive ? (
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="text-xs font-mono-sku font-extrabold text-emerald-400 tabular-nums">
+                              {fmt(unit)} / par
+                            </span>
+                            <span className="text-[10px] font-mono-sku text-zinc-500 line-through tabular-nums">
+                              {fmt(item.product.wholesalePrice)}
+                            </span>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono-sku font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              LOTE {volQty}+ SORTIDOS
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="text-[11px] font-jakarta font-semibold text-zinc-300 tabular-nums">
+                              {fmt(unit)} / par
+                            </span>
+                            {mode === 'atacado' && (
+                              <span className="text-[10px] font-mono-sku text-amber-400/80">
+                                ({volQty}+ sortidos sai a {fmt(volPrice)})
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <button
                       onClick={() => onRemoveItem(item.product.id)}
-                      className="text-zinc-500 hover:text-red-400 transition-colors p-1"
+                      className="text-zinc-500 hover:text-red-400 transition-colors p-1 cursor-pointer"
                       title="Remover modelo"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -272,7 +374,7 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                           <div className="flex items-center gap-1 mt-0.5">
                             <button
                               onClick={() => onUpdateQuantity(item.product.id, sq.size, sq.quantity - 1)}
-                              className="w-3.5 h-3.5 rounded bg-white/10 text-white flex items-center justify-center text-[9px] hover:bg-white/20"
+                              className="w-3.5 h-3.5 rounded bg-white/10 text-white flex items-center justify-center text-[9px] hover:bg-white/20 cursor-pointer"
                             >
                               -
                             </button>
@@ -281,7 +383,7 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                             </span>
                             <button
                               onClick={() => onUpdateQuantity(item.product.id, sq.size, sq.quantity + 1)}
-                              className="w-3.5 h-3.5 rounded bg-white/10 text-white flex items-center justify-center text-[9px] hover:bg-white/20"
+                              className="w-3.5 h-3.5 rounded bg-white/10 text-white flex items-center justify-center text-[9px] hover:bg-white/20 cursor-pointer"
                             >
                               +
                             </button>
@@ -309,7 +411,7 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
             <div className="space-y-1.5 text-xs font-mono-sku">
               <div className="flex justify-between text-zinc-400">
                 <span>Total de Pares no Pedido:</span>
-                <span className="text-white font-bold">{totalPairs} un</span>
+                <span className="text-white font-bold">{totalPairs} un (Sortidos)</span>
               </div>
 
               {mode === 'atacado' && (
@@ -318,10 +420,21 @@ export const B2BCartDrawer: React.FC<B2BCartDrawerProps> = ({
                     <span>Valor em Tabela Varejo:</span>
                     <span className="text-zinc-400 line-through tabular-nums">{fmt(totalRetailValue)}</span>
                   </div>
-                  {tierDiscountPercent > 0 && (
-                    <div className="flex justify-between text-emerald-400">
-                      <span>Desconto Adicional por Volume ({tierDiscountPercent}%):</span>
-                      <span className="tabular-nums">-{fmt(totalWholesaleValue * (tierDiscountPercent / 100))}</span>
+                  {isAnyVolumeActive && (
+                    <div className="flex justify-between text-emerald-400 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                      <span className="font-bold flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Desconto Mega Lote ({primaryVolumeQty}+ sortidos a €20):</span>
+                      </span>
+                      <span className="font-bold tabular-nums">
+                        -{fmt(
+                          cart.reduce((acc, item) => {
+                            const cnt = item.sizeQuantities.reduce((sAcc, sq) => sAcc + sq.quantity, 0);
+                            const diff = item.product.wholesalePrice - (item.product.volumeWholesalePrice ?? 20);
+                            return acc + (diff > 0 ? cnt * diff : 0);
+                          }, 0)
+                        )}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between text-emerald-400 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">

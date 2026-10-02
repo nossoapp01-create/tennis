@@ -8,7 +8,13 @@ interface ProductDetailModalProps {
   mode: 'varejo' | 'atacado';
   onClose: () => void;
   onAddToCart: (product: SneakerProduct, mode: 'varejo' | 'atacado', sizeQuantities: SizeQuantity[]) => void;
-  onUpdateProductPrices?: (productId: string, wholesalePrice: number, retailPrice: number) => void;
+  onUpdateProductPrices?: (
+    productId: string,
+    wholesalePrice: number,
+    retailPrice: number,
+    volumeWholesalePrice?: number,
+    volumeWholesaleQty?: number
+  ) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -41,18 +47,23 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [isEditingPrices, setIsEditingPrices] = useState(false);
   const [editWholesale, setEditWholesale] = useState(product.wholesalePrice.toString());
   const [editRetail, setEditRetail] = useState(product.retailPrice.toString());
+  const [editVolumePrice, setEditVolumePrice] = useState((product.volumeWholesalePrice ?? 20).toString());
+  const [editVolumeQty, setEditVolumeQty] = useState(product.volumeWholesaleQty ?? 50);
   const [priceSaveSuccess, setPriceSaveSuccess] = useState(false);
 
   const handleSaveDetailPrices = () => {
     const w = parseFloat(editWholesale.replace(',', '.'));
     const r = parseFloat(editRetail.replace(',', '.'));
+    const volP = parseFloat(editVolumePrice.replace(',', '.'));
     if (isNaN(w) || w <= 0 || isNaN(r) || r <= 0) {
       alert('Por favor, informe valores válidos maiores que zero para atacado e varejo.');
       return;
     }
 
+    const validVolPrice = !isNaN(volP) && volP > 0 ? volP : 20;
+
     if (onUpdateProductPrices) {
-      onUpdateProductPrices(product.id, w, r);
+      onUpdateProductPrices(product.id, w, r, validVolPrice, editVolumeQty);
     }
     setIsEditingPrices(false);
     setPriceSaveSuccess(true);
@@ -177,30 +188,58 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {product.name}
               </h2>
 
-              <div className="mt-3 flex items-baseline gap-4">
-                {mode === 'atacado' ? (
-                  <>
-                    <div>
-                      <span className="text-[11px] font-mono-sku text-zinc-400 block font-semibold uppercase">PREÇO ATACADO (10+ UN)</span>
-                      <span className="text-2xl font-jakarta font-bold text-amber-400 tracking-tight tabular-nums">
-                        {formattedWholesalePrice}
+              <div className="mt-3 space-y-2">
+                <div className="flex items-baseline gap-4 flex-wrap">
+                  {mode === 'atacado' ? (
+                    <>
+                      <div>
+                        <span className="text-[11px] font-mono-sku text-zinc-400 block font-semibold uppercase">PREÇO ATACADO (10+ UN)</span>
+                        <span className="text-2xl font-jakarta font-bold text-amber-400 tracking-tight tabular-nums">
+                          {formattedWholesalePrice}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">SUGESTÃO VAREJO</span>
+                        <span className="text-sm font-jakarta text-zinc-400 line-through tabular-nums">
+                          {formattedRetailPrice}
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono-sku font-bold px-2.5 py-1 rounded badge-3d-dark text-emerald-400">
+                        +{product.profitMarginPct}% Lucro
                       </span>
-                    </div>
+                    </>
+                  ) : (
                     <div>
-                      <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">SUGESTÃO VAREJO</span>
-                      <span className="text-sm font-jakarta text-zinc-400 line-through tabular-nums">
+                      <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">PREÇO VAREJO</span>
+                      <span className="text-2xl font-jakarta font-bold text-white tracking-tight tabular-nums">
                         {formattedRetailPrice}
                       </span>
                     </div>
-                    <span className="text-xs font-mono-sku font-bold px-2.5 py-1 rounded badge-3d-dark text-emerald-400">
-                      +{product.profitMarginPct}% Lucro
-                    </span>
-                  </>
-                ) : (
-                  <div>
-                    <span className="text-[11px] font-mono-sku text-zinc-400 block uppercase">PREÇO VAREJO</span>
-                    <span className="text-2xl font-jakarta font-bold text-white tracking-tight tabular-nums">
-                      {formattedRetailPrice}
+                  )}
+                </div>
+
+                {mode === 'atacado' && (
+                  <div className="bg-gradient-to-r from-emerald-500/15 via-[#18261e] to-teal-500/10 p-2.5 rounded-xl border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 flex-shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-syne font-extrabold text-white">
+                            Lote {product.volumeWholesaleQty || 50}+ Pares Sortidos:
+                          </span>
+                          <span className="text-sm font-mono-sku font-black text-emerald-300 tabular-nums">
+                            € {(product.volumeWholesalePrice ?? 20).toFixed(2)} / par
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-mono-sku text-emerald-300/80">
+                          Ao montar sua grade com {product.volumeWholesaleQty || 50}+ pares sortidos de qualquer modelo, o preço entra automaticamente a € {(product.volumeWholesalePrice ?? 20).toFixed(2)}!
+                        </p>
+                      </div>
+                    </div>
+                    <span className="self-start sm:self-center px-2 py-0.5 rounded bg-emerald-400 text-black font-mono-sku font-extrabold text-[10px] tracking-wide whitespace-nowrap shadow-sm">
+                      AUTOMÁTICO
                     </span>
                   </div>
                 )}
@@ -215,13 +254,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       onClick={() => {
                         setEditWholesale(product.wholesalePrice.toString());
                         setEditRetail(product.retailPrice.toString());
+                        setEditVolumePrice((product.volumeWholesalePrice ?? 20).toString());
+                        setEditVolumeQty(product.volumeWholesaleQty ?? 50);
                         setIsEditingPrices(true);
                         setPriceSaveSuccess(false);
                       }}
                       className="inline-flex items-center gap-1.5 text-[11px] font-syne font-bold text-amber-400 hover:text-amber-300 transition-colors py-1 px-2 rounded-lg hover:bg-amber-400/10 cursor-pointer"
                     >
                       <Pencil className="w-3 h-3 text-amber-400" />
-                      <span>Editar Valores (Varejo Sugerido e Atacado)</span>
+                      <span>Editar Valores (Varejo, Atacado 10+ e Lote +50/100)</span>
                     </button>
                   ) : (
                     <div className="p-3.5 mt-2 rounded-2xl bg-black/60 border border-amber-400/40 space-y-3">
@@ -242,7 +283,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-[10px] font-mono-sku text-amber-300 block mb-1 font-semibold">
-                            Valor Atacado (€)
+                            Valor Atacado 10+ (€)
                           </label>
                           <input
                             type="number"
@@ -269,21 +310,81 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         </div>
                       </div>
 
+                      {/* Volume Wholesale Tier Input */}
+                      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-2.5 rounded-xl border border-emerald-500/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-mono-sku text-emerald-300 font-bold flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-emerald-400" />
+                            <span>Lote de Volume Sortido:</span>
+                          </label>
+                          <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-emerald-500/30">
+                            <button
+                              type="button"
+                              onClick={() => setEditVolumeQty(50)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono-sku font-bold transition-all cursor-pointer ${
+                                editVolumeQty === 50 ? 'bg-emerald-400 text-black' : 'text-zinc-400 hover:text-emerald-300'
+                              }`}
+                            >
+                              +50 pares
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditVolumeQty(100)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono-sku font-bold transition-all cursor-pointer ${
+                                editVolumeQty === 100 ? 'bg-emerald-400 text-black' : 'text-zinc-400 hover:text-emerald-300'
+                              }`}
+                            >
+                              +100 pares
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-sku text-emerald-400 font-bold">€</span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="0.5"
+                              value={editVolumePrice}
+                              onChange={(e) => setEditVolumePrice(e.target.value)}
+                              placeholder="20"
+                              className="w-full bg-[#181719] border border-emerald-500/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs text-emerald-300 font-mono-sku font-bold focus:outline-none focus:border-emerald-400"
+                            />
+                          </div>
+                          <span className="text-[10px] font-mono-sku text-emerald-300/80">
+                            sai <strong>€{editVolumePrice || '20'}</strong> em <strong>{editVolumeQty}+</strong> sortidos
+                          </span>
+                        </div>
+                      </div>
+
                       {/* Real-time Margin & Profit Preview */}
                       {(() => {
                         const w = parseFloat(editWholesale.replace(',', '.'));
                         const r = parseFloat(editRetail.replace(',', '.'));
+                        const v = parseFloat(editVolumePrice.replace(',', '.'));
                         if (!isNaN(w) && w > 0 && !isNaN(r) && r > 0) {
-                          const margin = Math.round(((r - w) / w) * 100);
-                          const profit = r - w;
+                          const margin10 = Math.round(((r - w) / w) * 100);
+                          const profit10 = r - w;
+                          const profitVol = !isNaN(v) && v > 0 ? r - v : null;
+                          const marginVol = !isNaN(v) && v > 0 ? Math.round(((r - v) / v) * 100) : null;
+
                           return (
-                            <div className="flex items-center justify-between text-[11px] font-mono-sku bg-white/5 px-2.5 py-1.5 rounded-lg">
-                              <span className="text-zinc-400">
-                                Lucro Estimado: <strong className="text-white">€ {profit.toFixed(2)}</strong>
-                              </span>
-                              <span className={margin >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-                                +{margin}% Margem
-                              </span>
+                            <div className="space-y-1 text-[10px] font-mono-sku bg-white/5 p-2 rounded-lg">
+                              <div className="flex items-center justify-between text-zinc-300">
+                                <span>No Atacado 10+: Lucro de <strong>€ {profit10.toFixed(2)}/par</strong></span>
+                                <span className={margin10 >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                                  +{margin10}% Margem
+                                </span>
+                              </div>
+                              {profitVol !== null && (
+                                <div className="flex items-center justify-between text-emerald-300 pt-1 border-t border-white/5">
+                                  <span>No Lote {editVolumeQty}+: Lucro de <strong>€ {profitVol.toFixed(2)}/par</strong></span>
+                                  <span className="text-emerald-400 font-bold">
+                                    +{marginVol}% Margem
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           );
                         }
